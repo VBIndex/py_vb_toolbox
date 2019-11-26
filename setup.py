@@ -4,7 +4,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="pyVBIndex",
+    name="VBIndex",
     version="0.0.1",
     author="Lucas da Costa Campos",
     author_email="lqccampos@gmail.com",

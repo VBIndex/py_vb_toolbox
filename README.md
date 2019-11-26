@@ -1,2 +1,2 @@
-# py_vbindex
+# VBIndex
 Voigt-Bailey index toolbox in Python
