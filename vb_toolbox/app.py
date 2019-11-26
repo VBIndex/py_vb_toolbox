@@ -15,7 +15,7 @@ import vb_toolbox.vb_index as vb
 
 def parse_args():
     # Get some CLI information
-    parser = argparse.ArgumentParser(description='Calculate the Voigt-Bailey index of a dataset.')
+    parser = argparse.ArgumentParser(description='Calculate the Vogt-Bailey index of a dataset.')
     parser.add_argument('-j', '--jobs', metavar='N', type=int, nargs=1,
                         default=[multiprocessing.cpu_count()], help="""Maximum
                         number of jobs to be used. If abscent, one job per CPU

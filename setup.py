@@ -8,7 +8,7 @@ setuptools.setup(
     version="0.0.1",
     author="Lucas da Costa Campos",
     author_email="lqccampos@gmail.com",
-    description="Library and command-line tool to calculate the Voigt-Bailey index of a dataset",
+    description="Library and command-line tool to calculate the Vogt-Bailey index of a dataset",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/VBIndex/py_vbindex",
