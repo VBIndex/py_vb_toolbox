@@ -10,7 +10,6 @@ import argparse
 import multiprocessing
 import nibabel
 import numpy as np
-import sklearn.cluster as skc
 import vb_toolbox.io as io
 import vb_toolbox.vb_index as vb
 
