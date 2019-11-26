@@ -4,7 +4,7 @@
 #
 # Copyright © 2019 Lucas Costa Campos <l.campos@fz-juelich.de>
 #
-# Distributed under terms of the MIT license.
+# Distributed under terms of the GPL license.
 
 import argparse
 import multiprocessing

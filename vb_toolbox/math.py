@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 # vim:fenc=utf-8
 #
-# Copyright © 2019 Lucas Costa Campos <rmk236@gmail.com>
+# Copyright © 2019 Lucas Costa Campos <l.campos@fz-juelich.de>
 #
-# Distributed under terms of the MIT license.
+# Distributed under terms of the GPL license.
 
 import numpy as np
 import scipy.linalg as spl
