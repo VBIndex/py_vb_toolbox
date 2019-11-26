@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 # vim:fenc=utf-8
 #
-# Copyright © 2019 Lucas Costa Campos <l.campos@fz-juelich.de>
+# Copyright © 2019 Lucas Costa Campos <rmk236@gmail.com>
 #
-# Distributed under terms of the GPL license.
+# Distributed under terms of the MIT license.
 
 import nibabel
 import numpy as np
@@ -196,12 +196,6 @@ def vb_cluster(surf_vertices, surf_faces, nib_surf, n_cpus, data, cluster_index,
     for i in range(len(surf_vertices)):
         results_vertices_eigenvectors.append(results_eigenvectors[cluster_index[i]-1])
 
-    # Remove the corpus collusum
-    results_vertices[np.logical_not(cort_index)] = np.nan
-    for i in range(len(results_vertices_eigenvectors)):
-        if not cort_index[i]:
-            results_vertices_eigenvectors[i][:] = np.nan
-
     #Now we need to make the eigenvectors into a nice matrix
     max_size = 0
     for v in results_vertices_eigenvectors:
@@ -212,6 +206,11 @@ def vb_cluster(surf_vertices, surf_faces, nib_surf, n_cpus, data, cluster_index,
 
     for idx, v in enumerate(results_vertices_eigenvectors):
         matrix_eigenvectors[idx, :len(v)] = v
+
+    # Remove the corpus collusum
+    results_vertices[np.logical_not(cort_index)] = np.nan
+    matrix_eigenvectors[np.logical_not(cort_index), :] = np.nan
+
 
     # Save file
     if output_name is not None:

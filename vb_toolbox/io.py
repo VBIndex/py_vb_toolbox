@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 # vim:fenc=utf-8
 #
-# Copyright © 2019 Lucas Costa Campos <l.campos@fz-juelich.de>
+# Copyright © 2019 Lucas Costa Campos <rmk236@gmail.com>
 #
-# Distributed under terms of the GPL license.
+# Distributed under terms of the MIT license.
 
 import nibabel
 import numpy as np
