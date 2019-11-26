@@ -75,13 +75,13 @@ def main():
 
     if args.clusters is None:
         print("Running normal version")
-        result = vb.vb_index(vertices, faces, nib_surf, n_cpus, cifti, 'unnorm', cort_index, args.output[0] + args.norm[0])
+        result = vb.vb_index(vertices, faces, nib_surf, n_cpus, cifti, args.norm[0], cort_index, args.output[0] + args.norm[0])
 
     else:
         print("Running cluster version")
         nib, Z = io.open_gifti(args.clusters[0])
         Z = np.array(Z, dtype=np.int)
-        result = vb.vb_cluster(vertices, faces, nib_surf, n_cpus, cifti, Z, 'unnorm', cort_index, args.output[0] + args.norm[0])
+        result = vb.vb_cluster(vertices, faces, nib_surf, n_cpus, cifti, Z, args.norm[0], cort_index, args.output[0] + args.norm[0])
 
 
 if __name__ == "__main__":
