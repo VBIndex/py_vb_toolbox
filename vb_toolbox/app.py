@@ -42,7 +42,7 @@ def parse_args():
     requiredNamed.add_argument('-l', '--label', metavar='file', type=str,
                                nargs=1, help="""File containing the labels to
                                               identify the cortex, rather than
-                                              the corpus collosum""",
+                                              the medial brain structures""",
                                               required=True)
 
     requiredNamed.add_argument('-o', '--output', metavar='file', type=str,
