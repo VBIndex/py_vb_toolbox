@@ -110,7 +110,7 @@ def vb_index(surf_vertices, surf_faces, nib_surf, n_cpus, data, norm, cort_index
 def vb_cluster_internal_loop(idx_cluster_0, idx_cluster_N, surf_faces, data, cluster_index, norm, print_progress=False):
     """Computes the Voigt-Bailey index of vertices in a given range"""
 
-    print(f"Doing {idx_cluster_0} to {idx_cluster_N}")
+    # print(f"Doing {idx_cluster_0} to {idx_cluster_N}")
 
     # Calculate how many vertices we will compute
     diff = idx_cluster_N - idx_cluster_0
@@ -121,10 +121,10 @@ def vb_cluster_internal_loop(idx_cluster_0, idx_cluster_N, surf_faces, data, clu
         #Calculate the real index
         i = idx + idx_cluster_0
 
-        print("Analyses of {}".format(cluster_labels[i]))
+        # print("Analyses of {}".format(cluster_labels[i]))
         # Get neighborhood and its data
         neighborhood = data[cluster_index == cluster_labels[i]]
-        print("Neighbooh size{}".format(len(neighborhood)))
+        # print("Neighbooh size{}".format(len(neighborhood)))
 
         # Calculate the eigenvalues
         affinity = m.create_affinity_matrix(neighborhood)
