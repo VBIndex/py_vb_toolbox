@@ -22,7 +22,7 @@ def parse_args():
                         will be spawned""")
 
     parser.add_argument('-n', '--norm', metavar='norm', type=str, nargs=1,
-                        default=["unnorm"], help="""Laplacian norm to be
+                        default=["geig"], help="""Laplacian norm to be
                         used. Defaults to unnorm""")
 
     parser.add_argument('-c', '--clusters', metavar='file', type=str, nargs=1, default=None,
