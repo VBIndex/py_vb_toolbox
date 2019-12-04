@@ -115,13 +115,16 @@ def vb_cluster_internal_loop(idx_cluster_0, idx_cluster_N, surf_faces, data, clu
     # Calculate how many vertices we will compute
     diff = idx_cluster_N - idx_cluster_0
     loc_result = []
+    cluster_labels = np.unique(cluster_index)
 
     for idx in range(diff):
         #Calculate the real index
         i = idx + idx_cluster_0
 
+        print("Analyses of {}".format(cluster_labels[i]))
         # Get neighborhood and its data
-        neighborhood = data[cluster_index == (i+1)]
+        neighborhood = data[cluster_index == cluster_labels[i]]
+        print("Neighbooh size{}".format(len(neighborhood)))
 
         # Calculate the eigenvalues
         affinity = m.create_affinity_matrix(neighborhood)
@@ -148,10 +151,9 @@ def vb_cluster_internal_loop(idx_cluster_0, idx_cluster_N, surf_faces, data, clu
 def vb_cluster(surf_vertices, surf_faces, nib_surf, n_cpus, data, cluster_index, norm, cort_index, output_name = None):
     """Computes the Voigt-Bailey index of vertices for the whole mesh"""
 
-    print(cort_index)
-
     # Calculate how many vertices each process is going to be responsible for
-    n_items = len(np.unique(cluster_index))
+    cluster_labels = np.unique(cluster_index)
+    n_items = len(cluster_labels)
     n_cpus = min(n_items, n_cpus)
     # vb_cluster_internal_loop(0, n_items, surf_faces, data, cluster_index, norm)
     # return []
@@ -170,43 +172,34 @@ def vb_cluster(surf_vertices, surf_faces, nib_surf, n_cpus, data, cluster_index,
 
     # Gather the results from the threads we just spawned
     results = []
-    results_eigenvectors = []
+    results_eigenvectors_l = []
     for i, res in enumerate(threads):
         for r, rv in res.get():
             results.append(r)
-            results_eigenvectors.append(rv)
+            results_eigenvectors_l.append(rv)
     results = np.array(results)
 
     # Now we need to push the data back into the original vertices
-    results_vertices = results[cluster_index-1]
-    results_vertices_eigenvectors = []
-    for i in range(len(surf_vertices)):
-        results_vertices_eigenvectors.append(results_eigenvectors[cluster_index[i]-1])
-
-    #Now we need to make the eigenvectors into a nice matrix
-    max_size = 0
-    for v in results_vertices_eigenvectors:
-        max_size = max(max_size, len(v))
-
-    matrix_eigenvectors = np.ones((len(surf_vertices), max_size))
-    matrix_eigenvectors[:,:] = np.nan
-
-    for idx, v in enumerate(results_vertices_eigenvectors):
-        matrix_eigenvectors[idx, :len(v)] = v
+    results_eigenvalues = np.zeros(len(surf_vertices))
+    results_eigenvectors = np.zeros((len(surf_vertices), n_items))
+    for i in range(n_items):
+        cluster = cluster_labels[i]
+        idx = np.where(cluster_index == cluster)[0]
+        results_eigenvalues[idx] = results[i]
+        results_eigenvectors[idx, i] = results_eigenvectors_l[i]
 
     # Remove the corpus collusum
-    results_vertices[np.logical_not(cort_index)] = np.nan
-    matrix_eigenvectors[np.logical_not(cort_index), :] = np.nan
-
+    results_eigenvalues[np.logical_not(cort_index)] = np.nan
+    results_eigenvectors[np.logical_not(cort_index), :] = np.nan
 
     # Save file
     if output_name is not None:
-        io.save_gifti(nib_surf, results_vertices, output_name + "vb-cluster.value.shape.gii")
-        io.save_gifti(nib_surf, matrix_eigenvectors, output_name + "vb-cluster.vector.shape.gii")
+        io.save_gifti(nib_surf, results_eigenvalues, output_name + ".vb-cluster.value.shape.gii")
+        io.save_gifti(nib_surf, results_eigenvectors, output_name + ".vb-cluster.vector.shape.gii")
 
     # Cleanup
     pool.close()
     pool.terminate()
     pool.join()
 
-    return results_vertices, results_vertices_eigenvectors
+    return results_eigenvalues, results_eigenvectors

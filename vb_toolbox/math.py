@@ -24,7 +24,7 @@ def force_symmetric(M):
 
     return triu_M + diag_M + triu_M.transpose()
 
-def solve_general_eigenproblem(Q, D=None):
+def solve_general_eigenproblem(Q, D=None, is_symmetric=True):
 
     """Solve the general eigenproblem.
 
@@ -33,13 +33,21 @@ def solve_general_eigenproblem(Q, D=None):
     eigenvalue.
     """
 
-    if D is None:
-        eigenvalues, eigenvectors = spl.eig(Q, check_finite=False)
+    if is_symmetric:
+        if D is None:
+            eigenvalues, eigenvectors = spl.eigh(Q, check_finite=False)
+        else:
+            eigenvalues, eigenvectors = spl.eigh(Q, D, check_finite=False)
     else:
-        eigenvalues, eigenvectors = spl.eig(Q, D, check_finite=False)
+        if D is None:
+            eigenvalues, eigenvectors = spl.eig(Q, check_finite=False)
+        else:
+            eigenvalues, eigenvectors = spl.eig(Q, D, check_finite=False)
 
     eigenvalues = np.real(eigenvalues)
     eigenvectors = np.real(eigenvectors)
+
+    eigenvectors  = eigenvectors.transpose()
 
     if D is not None:
         # By default, scipy returns eigenvectos normalised in the Frobenius
@@ -119,7 +127,7 @@ def spectral_reorder(B, method = 'geig'):
         # L = spl.solve(T, Q)
         L = spl.solve(D, Q)
 
-        eigenvalues, eigenvectors, sort = solve_general_eigenproblem(L)
+        eigenvalues, eigenvectors, sort = solve_general_eigenproblem(L, is_symmetric=False)
         # eigenvectors = -eigenvectors
 
     elif method == 'unnorm':
