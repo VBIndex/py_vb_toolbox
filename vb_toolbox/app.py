@@ -13,7 +13,7 @@ import numpy as np
 import vb_toolbox.io as io
 import vb_toolbox.vb_index as vb
 
-def parse_args():
+def create_parser():
     # Get some CLI information
     parser = argparse.ArgumentParser(description='Calculate the Vogt-Bailey index of a dataset.')
     parser.add_argument('-j', '--jobs', metavar='N', type=int, nargs=1,
@@ -26,8 +26,10 @@ def parse_args():
                         used. Defaults to unnorm""")
 
     parser.add_argument('-c', '--clusters', metavar='file', type=str, nargs=1, default=None,
-                        help="""File containing the surface clusters. Must be
-                              one-based""")
+                        help="""File containing the surface clusters.""")
+
+    parser.add_argument('-fb', '--full-brain', action='store_true',
+                        help="""Calculate full brain spectral reordering.""")
 
     requiredNamed = parser.add_argument_group('required named arguments')
 
@@ -46,20 +48,24 @@ def parse_args():
                                               required=True)
 
     requiredNamed.add_argument('-o', '--output', metavar='file', type=str,
-                               nargs=1, help="""Stem with tehe filename of the
-                                              output file""", required=True)
+                               nargs=1, help="""Base name for the
+                                              output files""", required=True)
 
 
-    args = parser.parse_args()
+    # args = parser.parse_args()
 
-    return args
+    return parser
 
 
 def main():
 
-    args = parse_args()
+    parser = create_parser()
+    try:
+        args = parser.parse_args()
+    except:
+        parser.print_help()
+        quit()
     n_cpus = args.jobs[0]
-
     # Read the initial mesh, and run clustering on it
     # nib_surf, vertices, faces = io.open_gifti_surf("./100206.L.very_inflated_MSMAll.32k_fs_LR.surf.gii")
     nib_surf, vertices, faces = io.open_gifti_surf(args.surface[0])
@@ -72,7 +78,11 @@ def main():
     nib = nibabel.load(args.data[0])
     cifti = nib.darrays[0].data
 
-    if args.clusters is None:
+    if args.full_brain:
+        print("Performing reordering of the full brain")
+        Z = np.ones(len(vertices), dtype=np.int)
+        result = vb.vb_cluster(vertices, faces, nib_surf, n_cpus, cifti, Z, args.norm[0], cort_index, args.output[0] + "." + args.norm[0])
+    elif args.clusters is None:
         print("Running normal version")
         result = vb.vb_index(vertices, faces, nib_surf, n_cpus, cifti, args.norm[0], cort_index, args.output[0] + "." + args.norm[0])
 
