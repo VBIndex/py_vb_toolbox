@@ -69,13 +69,6 @@ def vb_index_internal_loop(i0, iN, surf_faces, data, norm, print_progress=False)
 def vb_index(surf_vertices, surf_faces, nib_surf, n_cpus, data, norm, cort_index, output_name = None):
     """Computes the Voigt-Bailey index of vertices for the whole mesh"""
 
-    #To check with CJB: Why can't we use rw or sym?
-    if norm == "unnorm" or norm == "geig":
-        pass
-    else:
-        raise NameError("""Norm '{}' not allowed. \n
-        Please choose one of the following: 'geig', 'unnorm'.""".format(norm))
-
     # Calculate how many vertices each process is going to be responsible for
     n_items = len(surf_vertices)
     n_cpus = min(n_items, n_cpus)
@@ -156,12 +149,6 @@ def vb_cluster(surf_vertices, surf_faces, nib_surf, n_cpus, data, cluster_index,
     """Computes the Voigt-Bailey index of vertices for the whole mesh"""
 
     print(cort_index)
-    #To check with CJB: Why can't we use rw or sym?
-    if norm == "unnorm" or norm == "geig":
-        pass
-    else:
-        raise NameError("""Norm '{}' not allowed. \n
-        Please choose one of the following: 'geig', 'unnorm'.""".format(norm))
 
     # Calculate how many vertices each process is going to be responsible for
     n_items = len(np.unique(cluster_index))
