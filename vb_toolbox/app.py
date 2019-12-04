@@ -22,7 +22,7 @@ def parse_args():
                         will be spawned""")
 
     parser.add_argument('-n', '--norm', metavar='norm', type=str, nargs=1,
-                        default=["unnorm"], help="""Laplacian norm to be
+                        default=["geig"], help="""Laplacian norm to be
                         used. Defaults to unnorm""")
 
     parser.add_argument('-c', '--clusters', metavar='file', type=str, nargs=1, default=None,
@@ -42,7 +42,7 @@ def parse_args():
     requiredNamed.add_argument('-l', '--label', metavar='file', type=str,
                                nargs=1, help="""File containing the labels to
                                               identify the cortex, rather than
-                                              the corpus collosum""",
+                                              the medial brain structures""",
                                               required=True)
 
     requiredNamed.add_argument('-o', '--output', metavar='file', type=str,
