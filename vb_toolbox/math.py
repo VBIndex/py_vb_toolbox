@@ -16,6 +16,15 @@ def force_symmetric(M):
     The symmetric version is computed by first replicating the diagonal and
     upper triangular components of the matrix, and mirroring the upper diagonal
     into the lower diagonal them into the lower triangular.
+
+    Parameters
+    ----------
+    M: (N, N) numpy array
+       Matrix to be made symmetric
+
+    Returns
+    -------
+    M_sym: Symmetric version of M
     """
     # One diag extracs the diagonal into an array, two
     # diags turns the array into a diagonal matrix.
@@ -30,7 +39,26 @@ def solve_general_eigenproblem(Q, D=None, is_symmetric=True):
 
     Solves the general eigenproblem Qx = lDx. The eigenvectos returned are
     unitary in the norm induced by the matrix D, and are sorted in increasing
-    eigenvalue.
+    eigenvalue. If D is not set, the identity matrix is assumed.
+
+    Parameters
+    ----------
+
+    Q: (M, M) numpy array
+       Main matrix
+    D: (M, M) numpy array
+        Numpy array with matrix. If not set, will solve, this function will solve the
+        standard eigenproblem.
+    is_symmetric: boolean
+                  Indicates whether Q *and* D are symmetric.
+                  If set, the program will use a much faster, but less general, 
+                  algorithm
+
+    Returns
+    -------
+    eigenvalues: Numpy array with eigenvalues
+    eigenvectors: Numpy array with eigenvectors. 
+                  Note: The matrix is transposed in relation to standard Numpy
     """
 
     if is_symmetric:
@@ -64,10 +92,31 @@ def solve_general_eigenproblem(Q, D=None, is_symmetric=True):
     eigenvalues = eigenvalues[sort_eigen]
     eigenvectors = eigenvectors[:, sort_eigen]
 
-    return eigenvalues, eigenvectors, sort_eigen
+    return eigenvalues, eigenvectors
 
 def spectral_reorder(B, method = 'geig'):
-    """Computes the spectral reorder of the matrix"""
+    """Computes the spectral reorder of the matrix B
+
+    Parameters
+    ----------
+    B: (M, M) array_like
+       Square matrix to be reordered.
+    method: string
+            Method of reordering. Possibilities are 'geig', 'unnorm', 'rw' and 'sym'
+
+    Returns
+    -------
+    sorted_B: (M, M) numpy array
+              Reordered matrix
+    sort_idx: (M) numpy array
+              Reordering mask applied to B
+    v2      : (M) numpy array
+              Fiedler vector
+    eigenvalues: (M) numpy array
+                  Eigenvalues of B
+    eigenvectors: (M,M) numpy array
+                  Eigenvectors of B
+    """
 
     # Fix the input
     assert B.shape[0] == B.shape[1], "Matrix B must be square!"
@@ -105,7 +154,7 @@ def spectral_reorder(B, method = 'geig'):
         # Method using generalised spectral decomposition of the
         # un-normalised Laplacian (see Shi and Malik, 2000)
 
-        eigenvalues, eigenvectors, sort = solve_general_eigenproblem(Q, D)
+        eigenvalues, eigenvectors = solve_general_eigenproblem(Q, D)
         # eigenvectors = -eigenvectors
 
     elif method == 'sym':
@@ -116,7 +165,7 @@ def spectral_reorder(B, method = 'geig'):
         L = spl.solve(T, Q)/np.diag(T) #Compute the normalized laplacian
         L = force_symmetric(L) # Force symmetry
 
-        eigenvalues, eigenvectors, sort = solve_general_eigenproblem(L)
+        eigenvalues, eigenvectors = solve_general_eigenproblem(L)
         eigenvectors = spl.solve(T, eigenvectors) # renormalize
 
     elif method == 'rw':
@@ -127,12 +176,12 @@ def spectral_reorder(B, method = 'geig'):
         # L = spl.solve(T, Q)
         L = spl.solve(D, Q)
 
-        eigenvalues, eigenvectors, sort = solve_general_eigenproblem(L, is_symmetric=False)
+        eigenvalues, eigenvectors = solve_general_eigenproblem(L, is_symmetric=False)
         # eigenvectors = -eigenvectors
 
     elif method == 'unnorm':
 
-        eigenvalues, eigenvectors, sort = solve_general_eigenproblem(Q)
+        eigenvalues, eigenvectors = solve_general_eigenproblem(Q)
 
     else:
         raise NameError("""Method '{}' not allowed. \n
@@ -143,10 +192,23 @@ def spectral_reorder(B, method = 'geig'):
     sorted_B = B[sort_idx,:] # Reorder the original matrix
     sorted_B = sorted_B[:,sort_idx] # Reorder the original matrix
     v3D = eigenvectors[:, 1:4] # Extract first three non-null vectors
-    return sorted_B, sort_idx, v2, v3D, eigenvalues, eigenvectors
+    return sorted_B, sort_idx, v2, eigenvalues, eigenvectors
 
 def create_affinity_matrix(neighborhood, eps=np.finfo(float).eps):
-    """Computes the affinity matrix of a given neighborhood"""
+    """
+    Computes the affinity matrix of a given neighborhood
+
+    Parameters
+    ----------
+    neighborhood: (M, N) numpy array
+    eps: float
+         Small value which will replace negative numbers
+
+    Returns
+    -------
+    affinity: (M, M) numpy array
+              Affinity matrix of the neighborhood
+    """
 
     neighborhood_len = neighborhood.shape[0]
     neighborhood = neighborhood.reshape(neighborhood_len, -1)
