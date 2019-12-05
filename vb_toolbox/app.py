@@ -4,7 +4,7 @@
 #
 # Copyright © 2019 Lucas Costa Campos <l.campos@fz-juelich.de>
 #
-# Distributed under terms of the MIT license.
+# Distributed under terms of the GNU license.
 
 import argparse
 import multiprocessing
@@ -81,16 +81,16 @@ def main():
     if args.full_brain:
         print("Performing reordering of the full brain")
         Z = np.ones(len(vertices), dtype=np.int)
-        result = vb.vb_cluster(vertices, faces, nib_surf, n_cpus, cifti, Z, args.norm[0], cort_index, args.output[0] + "." + args.norm[0])
+        result = vb.vb_cluster(vertices, faces, n_cpus, cifti, Z, args.norm[0], cort_index, args.output[0] + "." + args.norm[0], nib_surf)
     elif args.clusters is None:
         print("Running normal version")
-        result = vb.vb_index(vertices, faces, nib_surf, n_cpus, cifti, args.norm[0], cort_index, args.output[0] + "." + args.norm[0])
+        result = vb.vb_index(vertices, faces, n_cpus, cifti, args.norm[0], cort_index, args.output[0] + "." + args.norm[0], nib_surf)
 
     else:
         print("Running cluster version")
         nib, Z = io.open_gifti(args.clusters[0])
         Z = np.array(Z, dtype=np.int)
-        result = vb.vb_cluster(vertices, faces, nib_surf, n_cpus, cifti, Z, args.norm[0], cort_index, args.output[0] + "." + args.norm[0])
+        result = vb.vb_cluster(vertices, faces, n_cpus, cifti, Z, args.norm[0], cort_index, args.output[0] + "." + args.norm[0], nib_surf)
 
 
 if __name__ == "__main__":
