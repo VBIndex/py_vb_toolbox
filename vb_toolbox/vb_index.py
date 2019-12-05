@@ -69,7 +69,7 @@ def vb_index_internal_loop(i0, iN, surf_faces, data, norm, print_progress=False)
         # __import__('pdb').set_trace()
         # Calculate the eigenvalues
         affinity = m.create_affinity_matrix(neighborhood)
-        _, _, _, _, eigenvalues, _ = m.spectral_reorder(affinity, norm)
+        _, _, _, eigenvalues, _ = m.spectral_reorder(affinity, norm)
         normalisation_factor = np.average(eigenvalues[1:])
 
         # Store the result of this run
@@ -195,7 +195,7 @@ def vb_cluster_internal_loop(idx_cluster_0, idx_cluster_N, surf_faces, data, clu
 
         # Calculate the eigenvalues
         affinity = m.create_affinity_matrix(neighborhood)
-        _, _, _, _, eigenvalues, eigenvectors = m.spectral_reorder(affinity, norm)
+        _, _, _, eigenvalues, eigenvectors = m.spectral_reorder(affinity, norm)
         normalisation_factor = sum(eigenvalues)/len(eigenvalues-1)
 
         # Store the result of this run
