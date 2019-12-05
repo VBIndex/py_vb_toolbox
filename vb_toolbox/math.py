@@ -4,7 +4,7 @@
 #
 # Copyright © 2019 Lucas Costa Campos <rmk236@gmail.com>
 #
-# Distributed under terms of the MIT license.
+# Distributed under terms of the GNU license.
 
 import numpy as np
 import scipy.linalg as spl
