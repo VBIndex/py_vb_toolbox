@@ -21,7 +21,8 @@ pip install VBIndex
 ```
 
 If your pip is properly configured, you can now use the program `vb_index` from
-your command line, and import any of the submodules in the `vb_toolbox`.
+your command line, and import any of the submodules in the `vb_toolbox` in your python 
+interpreter.
 
 ## Build
 
