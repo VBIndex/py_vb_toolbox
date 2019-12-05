@@ -11,7 +11,7 @@ import numpy as np
 import scipy.linalg as spl
 
 import vb_toolbox.io as io
-import vb_toolbox.math as m
+import vb_toolbox.numerics as m
 
 counter = None
 n = None
