@@ -25,11 +25,19 @@ def create_parser():
                         default=["geig"], help="""Laplacian norm to be
                         used. Defaults to unnorm""")
 
-    parser.add_argument('-c', '--clusters', metavar='file', type=str, nargs=1, default=None,
-                        help="""File containing the surface clusters.""")
-
     parser.add_argument('-fb', '--full-brain', action='store_true',
                         help="""Calculate full brain spectral reordering.""")
+
+    parser.add_argument('-l', '--label', metavar='file', type=str,
+                               nargs=1, help="""File containing the labels to
+                               identify the cortex, rather than the medial
+                               brain structures. This flag must be set for
+                               normal analyses and full brain analyses.""")
+
+    parser.add_argument('-c', '--clusters', metavar='file', type=str, nargs=1, default=None,
+                        help="""File containing the surface clusters. Cluster
+                        with index 0 are expected to denote the medial brain
+                        structures and will be ignored.""")
 
     requiredNamed = parser.add_argument_group('required named arguments')
 
@@ -41,15 +49,11 @@ def create_parser():
                                nargs=1, help="""File containing the data over
                                               the surface""", required=True)
 
-    requiredNamed.add_argument('-l', '--label', metavar='file', type=str,
-                               nargs=1, help="""File containing the labels to
-                                              identify the cortex, rather than
-                                              the medial brain structures""",
-                                              required=True)
 
     requiredNamed.add_argument('-o', '--output', metavar='file', type=str,
                                nargs=1, help="""Base name for the
                                               output files""", required=True)
+
 
 
     # args = parser.parse_args()
@@ -60,19 +64,11 @@ def create_parser():
 def main():
 
     parser = create_parser()
-    try:
-        args = parser.parse_args()
-    except:
-        parser.print_help()
-        quit()
+    args = parser.parse_args()
+
     n_cpus = args.jobs[0]
     # Read the initial mesh, and run clustering on it
-    # nib_surf, vertices, faces = io.open_gifti_surf("./100206.L.very_inflated_MSMAll.32k_fs_LR.surf.gii")
     nib_surf, vertices, faces = io.open_gifti_surf(args.surface[0])
-    # Read labels
-    # _, labels = io.open_gifti('../core-data-and-script/L.atlasroi.32k_fs_LR.shape.gii')
-    _, labels = io.open_gifti(args.label[0])
-    cort_index = np.array(labels, np.bool)
 
     # nib = nibabel.load("./trial_2/REAL_DATA.func.gii")
     nib = nibabel.load(args.data[0])
@@ -80,18 +76,28 @@ def main():
 
     if args.full_brain:
         print("Performing reordering of the full brain")
-        Z = np.ones(len(vertices), dtype=np.int)
-        Z[np.logical_not(cort_index)] = 0
-        result = vb.vb_cluster(vertices, faces, n_cpus, cifti, Z, args.norm[0], cort_index, args.output[0] + "." + args.norm[0], nib_surf)
+        if args.label is None:
+            print("A mask file must be provided with -l flag. See --help for help")
+            quit()
+        _, labels = io.open_gifti(args.label[0])
+        cort_index = np.array(labels, np.bool)
+        Z = np.array(cort_index, dtype=np.int)
+        result = vb.vb_cluster(vertices, faces, n_cpus, cifti, Z, args.norm[0], args.output[0] + "." + args.norm[0], nib_surf)
     elif args.clusters is None:
         print("Running normal version")
+        if args.label is None:
+            print("A mask file must be provided with -l flag. See --help for help")
+            quit()
+        # Read labels
+        _, labels = io.open_gifti(args.label[0])
+        cort_index = np.array(labels, np.bool)
         result = vb.vb_index(vertices, faces, n_cpus, cifti, args.norm[0], cort_index, args.output[0] + "." + args.norm[0], nib_surf)
 
     else:
         print("Running cluster version")
         nib, Z = io.open_gifti(args.clusters[0])
         Z = np.array(Z, dtype=np.int)
-        result = vb.vb_cluster(vertices, faces, n_cpus, cifti, Z, args.norm[0], cort_index, args.output[0] + "." + args.norm[0], nib_surf)
+        result = vb.vb_cluster(vertices, faces, n_cpus, cifti, Z, args.norm[0], args.output[0] + "." + args.norm[0], nib_surf)
 
 
 if __name__ == "__main__":
