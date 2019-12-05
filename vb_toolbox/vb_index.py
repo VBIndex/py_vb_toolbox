@@ -188,6 +188,9 @@ def vb_cluster_internal_loop(idx_cluster_0, idx_cluster_N, surf_faces, data, clu
         #Calculate the real index
         i = idx + idx_cluster_0
 
+        if(cluster_labels[i] == 0):
+            loc_result.append(([], []))
+            continue
         print("Analyses of {}".format(cluster_labels[i]))
         # Get neighborhood and its data
         neighborhood = data[cluster_index == cluster_labels[i]]
@@ -215,7 +218,7 @@ def vb_cluster_internal_loop(idx_cluster_0, idx_cluster_N, surf_faces, data, clu
 
     return loc_result
 
-def vb_cluster(surf_vertices, surf_faces, n_cpus, data, cluster_index, norm, cort_index, output_name = None, nib_surf=None):
+def vb_cluster(surf_vertices, surf_faces, n_cpus, data, cluster_index, norm, output_name = None, nib_surf=None):
     """Computes the clustered Voigt-Bailey index of vertices for the whole mesh
 
        Parameters
@@ -249,6 +252,7 @@ def vb_cluster(surf_vertices, surf_faces, n_cpus, data, cluster_index, norm, cor
 
     # Calculate how many vertices each process is going to be responsible for
     cluster_labels = np.unique(cluster_index)
+    midline_index = cluster_index == 0
     n_items = len(cluster_labels)
     n_cpus = min(n_items, n_cpus)
     # vb_cluster_internal_loop(0, n_items, surf_faces, data, cluster_index, norm)
@@ -277,16 +281,23 @@ def vb_cluster(surf_vertices, surf_faces, n_cpus, data, cluster_index, norm, cor
 
     # Now we need to push the data back into the original vertices
     results_eigenvalues = np.zeros(len(surf_vertices))
-    results_eigenvectors = np.zeros((len(surf_vertices), n_items))
+    results_eigenvectors = []
     for i in range(n_items):
         cluster = cluster_labels[i]
-        idx = np.where(cluster_index == cluster)[0]
-        results_eigenvalues[idx] = results[i]
-        results_eigenvectors[idx, i] = results_eigenvectors_l[i]
+        if cluster != 0:
+            print(cluster)
+            results_eigenvectors_local = np.zeros(len(surf_vertices))
+            idx = np.where(cluster_index == cluster)[0]
+            results_eigenvalues[idx] = results[i]
+            results_eigenvectors_local[idx] = results_eigenvectors_l[i]
+            results_eigenvectors.append(results_eigenvectors_local)
+            print(cluster)
+
+    results_eigenvectors = np.array(results_eigenvectors).transpose()
 
     # Remove the corpus collusum
-    results_eigenvalues[np.logical_not(cort_index)] = np.nan
-    results_eigenvectors[np.logical_not(cort_index), :] = np.nan
+    results_eigenvalues[midline_index] = np.nan
+    results_eigenvectors[midline_index, :] = np.nan
 
     # Save file
     if output_name is not None:
