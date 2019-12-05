@@ -188,7 +188,7 @@ def vb_cluster_internal_loop(idx_cluster_0, idx_cluster_N, surf_faces, data, clu
         #Calculate the real index
         i = idx + idx_cluster_0
 
-        # print("Analyses of {}".format(cluster_labels[i]))
+        print("Analyses of {}".format(cluster_labels[i]))
         # Get neighborhood and its data
         neighborhood = data[cluster_index == cluster_labels[i]]
         # print("Neighbooh size{}".format(len(neighborhood)))

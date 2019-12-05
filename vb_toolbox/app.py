@@ -81,6 +81,7 @@ def main():
     if args.full_brain:
         print("Performing reordering of the full brain")
         Z = np.ones(len(vertices), dtype=np.int)
+        Z[np.logical_not(cort_index)] = 0
         result = vb.vb_cluster(vertices, faces, n_cpus, cifti, Z, args.norm[0], cort_index, args.output[0] + "." + args.norm[0], nib_surf)
     elif args.clusters is None:
         print("Running normal version")
