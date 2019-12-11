@@ -11,7 +11,7 @@ import numpy as np
 import scipy.linalg as spl
 
 import vb_toolbox.io as io
-import vb_toolbox.math as m
+import vb_toolbox.numerics as m
 
 counter = None
 n = None
@@ -193,7 +193,9 @@ def vb_cluster_internal_loop(idx_cluster_0, idx_cluster_N, surf_faces, data, clu
         neighborhood = data[cluster_index == cluster_labels[i]]
 
         # Calculate the eigenvalues
+        # np.save("neighborhood.npy", neighborhood)
         affinity = m.create_affinity_matrix(neighborhood)
+        # np.save("affinity.npy", affinity)
         _, _, _, eigenvalues, eigenvectors = m.spectral_reorder(affinity, norm)
         normalisation_factor = sum(eigenvalues)/len(eigenvalues-1)
 
@@ -201,7 +203,7 @@ def vb_cluster_internal_loop(idx_cluster_0, idx_cluster_N, surf_faces, data, clu
         # Warning: It is not true that the eigenvectors will be all the same
         # size, as the clusters might be of different sizes
         val = eigenvalues[1]/normalisation_factor
-        vel = eigenvectors[1]
+        vel = eigenvectors[:, 1]
         loc_result.append((val, vel))
 
         if print_progress:

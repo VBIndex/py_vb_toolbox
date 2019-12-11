@@ -61,6 +61,17 @@ def solve_general_eigenproblem(Q, D=None, is_symmetric=True):
                   Note: The matrix is transposed in relation to standard Numpy
     """
 
+    # q_max = np.max(np.abs(Q - Q.transpose()))
+    # print("Max error in Q: {}".format(q_max))
+    # np.save("Q.npy", Q)
+    # if D is not None:
+    #     np.save("D.npy", D)
+    #     d_max = np.max(np.abs(D - D.transpose()))
+    #     print("Max error in D: {}".format(d_max))
+
+    # print("saved")
+
+    # is_symmetric = False
     if is_symmetric:
         if D is None:
             eigenvalues, eigenvectors = spl.eigh(Q, check_finite=False)
@@ -72,10 +83,18 @@ def solve_general_eigenproblem(Q, D=None, is_symmetric=True):
         else:
             eigenvalues, eigenvectors = spl.eig(Q, D, check_finite=False)
 
+    # As a general recap. According to the scipy documentation,
+    # A   vr[:,i] = w[i] B vr[:,i]
+    # That is, the index of the eigenvector is on the second index,
+    # while the entry is in the first index.
+    # Thus, when we need to sort the the eigenvectors, we only need to 
+    # sort in the second index
     eigenvalues = np.real(eigenvalues)
     eigenvectors = np.real(eigenvectors)
 
-    eigenvectors  = eigenvectors.transpose()
+    # np.save("eigenvectors_original.npy", eigenvectors)
+    # np.save("eigenvalues_original.npy", eigenvalues)
+
 
     if D is not None:
         # By default, scipy returns eigenvectos normalised in the Frobenius
@@ -89,8 +108,10 @@ def solve_general_eigenproblem(Q, D=None, is_symmetric=True):
 
     # Sort eigen pairs in increasing order of eigenvalues
     sort_eigen = np.argsort(eigenvalues)
-    eigenvalues = eigenvalues[sort_eigen]
+    # eigenvalues = eigenvalues[sort_eigen]
     eigenvectors = eigenvectors[:, sort_eigen]
+    # np.save("eigenvectors_sorted.npy", eigenvectors)
+    # np.save("eigenvalues_sorted.npy", eigenvalues)
 
     return eigenvalues, eigenvectors
 
@@ -144,7 +165,7 @@ def spectral_reorder(B, method = 'geig'):
 
     triuC = np.triu(C,1) # Extract upper triangular elements;
     C = triuC + triuC.transpose() # Reconstruct a symmetric weighted adjacency matrix eliminating possible small errors in off-diagonal elements
-    D =  np.diag(np.sum(C, axis=-1)); # Compute the Degree matrix
+    D =  np.diag(np.sum(C, axis=-1)) # Compute the Degree matrix
 
     Q = D - C; #Compute un-normalised Laplacian
 
@@ -188,10 +209,11 @@ def spectral_reorder(B, method = 'geig'):
         Please choose one of the following: 'sym', 'rw', 'geig', 'unnorm'.""".format(method))
 
     v2 = eigenvectors[:, 1] # Get Fiedler vector
+    # np.save("v2.npy", v2)
     sort_idx = np.argsort(v2) # Find the reordering index
     sorted_B = B[sort_idx,:] # Reorder the original matrix
     sorted_B = sorted_B[:,sort_idx] # Reorder the original matrix
-    v3D = eigenvectors[:, 1:4] # Extract first three non-null vectors
+
     return sorted_B, sort_idx, v2, eigenvalues, eigenvectors
 
 def create_affinity_matrix(neighborhood, eps=np.finfo(float).eps):
