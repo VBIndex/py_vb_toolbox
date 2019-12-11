@@ -67,10 +67,7 @@ def main():
     args = parser.parse_args()
 
     n_cpus = args.jobs[0]
-    # Read the initial mesh, and run clustering on it
     nib_surf, vertices, faces = io.open_gifti_surf(args.surface[0])
-
-    # nib = nibabel.load("./trial_2/REAL_DATA.func.gii")
     nib = nibabel.load(args.data[0])
     cifti = nib.darrays[0].data
 

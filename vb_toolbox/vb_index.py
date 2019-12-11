@@ -117,12 +117,10 @@ def vb_index(surf_vertices, surf_faces, n_cpus, data, norm, cort_index, output_n
     n_cpus = min(n_items, n_cpus)
     dn = n_items//(n_cpus)
 
-    # vb_index_internal_loop(0, n_items, surf_faces, data, norm)
     # Init multiprocessing components
     counter = Value('i', 0)
     pool = Pool(initializer = init, initargs = (counter, n_items))
 
-    # r = vb_index_internal_loop(0, n_items, surf_faces, data, norm)
     # Spawn the threads that are going to do the real work
     threads = []
     for i0 in range(0, n_items, dn):
@@ -193,9 +191,7 @@ def vb_cluster_internal_loop(idx_cluster_0, idx_cluster_N, surf_faces, data, clu
         neighborhood = data[cluster_index == cluster_labels[i]]
 
         # Calculate the eigenvalues
-        # np.save("neighborhood.npy", neighborhood)
         affinity = m.create_affinity_matrix(neighborhood)
-        # np.save("affinity.npy", affinity)
         _, _, _, eigenvalues, eigenvectors = m.spectral_reorder(affinity, norm)
         normalisation_factor = sum(eigenvalues)/len(eigenvalues-1)
 
@@ -248,13 +244,13 @@ def vb_cluster(surf_vertices, surf_faces, n_cpus, data, cluster_index, norm, out
                             Resuling Fiedler vectors of the clusters
     """
 
-    # Calculate how many vertices each process is going to be responsible for
+    # Find the cluster indices, and the mibrain structures
     cluster_labels = np.unique(cluster_index)
     midline_index = cluster_index == 0
+
+    # Calculate how many vertices each process is going to be responsible for
     n_items = len(cluster_labels)
     n_cpus = min(n_items, n_cpus)
-    # vb_cluster_internal_loop(0, n_items, surf_faces, data, cluster_index, norm)
-    # return []
     dn = n_items//(n_cpus)
 
     # Init multiprocessing components
@@ -291,7 +287,7 @@ def vb_cluster(surf_vertices, surf_faces, n_cpus, data, cluster_index, norm, out
 
     results_eigenvectors = np.array(results_eigenvectors).transpose()
 
-    # Remove the corpus collusum
+    # Remove the midbrain
     results_eigenvalues[midline_index] = np.nan
     results_eigenvectors[midline_index, :] = np.nan
 
