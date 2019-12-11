@@ -28,7 +28,7 @@ def create_parser():
     parser.add_argument('-fb', '--full-brain', action='store_true',
                         help="""Calculate full brain spectral reordering.""")
 
-    parser.add_argument('-l', '--label', metavar='file', type=str,
+    parser.add_argument('-m', '--mask', metavar='file', type=str,
                                nargs=1, help="""File containing the labels to
                                identify the cortex, rather than the medial
                                brain structures. This flag must be set for
@@ -68,27 +68,27 @@ def main():
     cifti = nib.darrays[0].data
 
     if args.full_brain:
-        print("Performing reordering of the full brain")
-        if args.label is None:
-            print("A mask file must be provided with a mask/label through the --label flag. See --help")
+        print("Running full brain analyses")
+        if args.mask is None:
+            print("A mask file must be provided through the --label flag. See --help")
             quit()
-        _, labels = io.open_gifti(args.label[0])
+        _, labels = io.open_gifti(args.mask[0])
         cort_index = np.array(labels, np.bool)
         Z = np.array(cort_index, dtype=np.int)
         result = vb.vb_cluster(vertices, faces, n_cpus, cifti, Z, args.norm[0], args.output[0] + "." + args.norm[0], nib_surf)
 
     elif args.clusters is None:
-        print("Running normal version")
-        if args.label is None:
-            print("A mask file must be provided with a mask/label through the --label flag. See --help")
+        print("Running searchlight analyses")
+        if args.mask is None:
+            print("A mask file must be provided through the --label flag. See --help")
             quit()
         # Read labels
-        _, labels = io.open_gifti(args.label[0])
+        _, labels = io.open_gifti(args.mask[0])
         cort_index = np.array(labels, np.bool)
         result = vb.vb_index(vertices, faces, n_cpus, cifti, args.norm[0], cort_index, args.output[0] + "." + args.norm[0], nib_surf)
 
     else:
-        print("Running cluster version")
+        print("Running ROI analyses")
         nib, Z = io.open_gifti(args.clusters[0])
         Z = np.array(Z, dtype=np.int)
         result = vb.vb_cluster(vertices, faces, n_cpus, cifti, Z, args.norm[0], args.output[0] + "." + args.norm[0], nib_surf)
