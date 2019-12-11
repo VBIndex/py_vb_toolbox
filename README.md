@@ -137,7 +137,7 @@ be the best fastest approach, but rarely will be the slowest. If you are
 unsure, leave the number of jobs at the default level.
 
 Due to job structure of the `vb_index`, the level of parallelism it can achieve
-depends on the specific analyses being carried out. 
+on its own depends on the specific analyses being carried out. 
 
 1. Searchlight analyses: High level of parallelism. Will spawn as many jobs are
    there are CPUs
@@ -145,10 +145,11 @@ depends on the specific analyses being carried out.
 3. Region of Interest analyses: Medium level of parallelism. Will spawn as many
    jobs as there are ROIs, or number of CPUS, whichever is the lowest.
 
-Specially in the whole brain analyses, having a well optimized BLAS installation
-will grandly accelerate the process, and allow for a high degree of paralelism.
-Both MKL and OpenBLAS have been shown to offer great results. If you are using
-the Anaconda distribution, you will have a good BLAS pre-configured.
+Specially in the whole brain analyses, having a well optimized BLAS
+installation will grandly accelerate the process, and allow for a further
+paralelism.  Both MKL and OpenBLAS have been shown to offer fast analyses. If
+you are using the Anaconda distribution, you will have a good BLAS
+pre-configured.
 
 ## Developer Information
 
