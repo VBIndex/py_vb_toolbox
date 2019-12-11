@@ -24,7 +24,112 @@ If your pip is properly configured, you can now use the program `vb_index` from
 your command line, and import any of the submodules in the `vb_toolbox` in your python 
 interpreter.
 
-## Build
+## Usage of `vb_index` CLI 
+
+If VBIndex was installed via `pip`, the command line program `vb_index` should
+be available in your terminal. You can test if the program is correctly
+installed by typing
+
+```bash
+vb_index -h 
+```
+
+in your terminal. If you see the following output, the program has been
+properly installed.
+
+```bash
+usage: vb_index [-h] [-j N] [-n norm] [-fb] [-l file] [-c file] -s file -d
+                file -o file
+
+Calculate the Vogt-Bailey index of a dataset.
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -j N, --jobs N        Maximum number of jobs to be used. If abscent, one job
+                        per CPU will be spawned
+  -n norm, --norm norm  Laplacian norm to be used. Defaults to unnorm
+  -fb, --full-brain     Calculate full brain spectral reordering.
+  -l file, --label file
+                        File containing the labels to identify the cortex,
+                        rather than the medial brain structures. This flag
+                        must be set for normal analyses and full brain
+                        analyses.
+  -c file, --clusters file
+                        File containing the surface clusters. Cluster with
+                        index 0 are expected to denote the medial brain
+                        structures and will be ignored.
+
+required named arguments:
+  -s file, --surface file
+                        File containing the surface mesh
+  -d file, --data file  File containing the data over the surface
+  -o file, --output file
+                        Base name for the output files
+```
+
+If you copied the program source code, the executable is found in `vb_toolbox/app.py`. 
+You can test the program using 
+
+```bash
+python3 vb_toolbox/app.py
+```
+
+which should yield the results shown above.
+
+There are three main uses for the `vb_index`
+
+1. Searchlight analyses
+2. Whole brain gradient maps
+3. Gradient maps in a specified set of regions of interest
+
+### Searchlight analyses
+
+The per vertex analyses can be carried with the following command
+
+```bash
+vb_index --surface input_data/surface.surf.gii  --data input_data/data.func.gii --label input_data/cortical_mask.shape.gii --output search_light 
+```
+
+The number of vertices in the surface mesh must match the number of entries in
+the data and in the mask.
+
+The cortical mask must contain a logical array, with `True` values in the
+region on which the analyses will be carried out, and `False` in the regions to
+be left out. This is most commonly used to mask out midbrain structures which
+would otherwise influence the analysis of the cortical regions. 
+
+
+### Whole brain analyses
+
+To perform full brain analyses, the flag `-fb` or `--full-brain` must be set.
+Otherwise, the flags are the same as in the searchlight analysis.
+
+```bash
+vb_index --surface input_data/surface.surf.gii  --data input_data/data.func.gii --label input_data/cortical_mask.shape.gii --full-brain --output full_brain_gradient
+```
+
+Be warned, however, that this analysis can take long, use a good ammount of
+RAM. In systems with 32k vertices, upwards of 30GB of RAM were used.
+
+### Regions of Interest
+
+Sometimes, one is interested only in a small set of ROIs. In this case, the way
+for calling the program changes slightly,
+
+```bash
+vb_index --surface input_data/surface.surf.gii  --data input_data/data.func.gii  -c input_data/clusters.shape.gii --output clustered_analyses
+```
+
+The cluster file works similarly to the cortical mask in the previous
+modalities. However, its structure is slightly different. Instead of an array
+of logical values, the file must contain an array of integers, where each
+integer corresponds to a different cluster. The 0th cluster is special, and
+denotes an area which will *not* be analyzed. In these regards, it has a
+similar use to the cortical mask. 
+
+## Developer Information
+
+### Build
 
 We use setuptool and wheel to build the distribution code. The process is
 described next. More information can be found
