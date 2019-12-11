@@ -37,20 +37,20 @@ vb_index -h
 in your terminal. If you see the following output, the program has been
 properly installed.
 
-```bash
-usage: vb_index [-h] [-j N] [-n norm] [-fb] [-l file] [-c file] -s file -d
-                file -o file
+```
+usage: app.py [-h] [-j N] [-n norm] [-fb] [-m file] [-c file] -s file -d file
+              -o file
 
-Calculate the Vogt-Bailey index of a dataset.
+Calculate the Vogt-Bailey index of a dataset. For more information, check
+https://github.com/VBIndex/py_vbindex.
 
 optional arguments:
   -h, --help            show this help message and exit
   -j N, --jobs N        Maximum number of jobs to be used. If abscent, one job
                         per CPU will be spawned
-  -n norm, --norm norm  Laplacian norm to be used. Defaults to unnorm
+  -n norm, --norm norm  Laplacian normalization to be used. Defaults to unnorm
   -fb, --full-brain     Calculate full brain spectral reordering.
-  -l file, --label file
-                        File containing the labels to identify the cortex,
+  -m file, --mask file  File containing the labels to identify the cortex,
                         rather than the medial brain structures. This flag
                         must be set for normal analyses and full brain
                         analyses.
@@ -87,7 +87,7 @@ There are three main uses for the `vb_index`
 The per vertex analyses can be carried with the following command
 
 ```bash
-vb_index --surface input_data/surface.surf.gii  --data input_data/data.func.gii --label input_data/cortical_mask.shape.gii --output search_light 
+vb_index --surface input_data/surface.surf.gii  --data input_data/data.func.gii --mask input_data/cortical_mask.shape.gii --output search_light 
 ```
 
 The number of vertices in the surface mesh must match the number of entries in
@@ -105,7 +105,7 @@ To perform full brain analyses, the flag `-fb` or `--full-brain` must be set.
 Otherwise, the flags are the same as in the searchlight analysis.
 
 ```bash
-vb_index --surface input_data/surface.surf.gii  --data input_data/data.func.gii --label input_data/cortical_mask.shape.gii --full-brain --output full_brain_gradient
+vb_index --surface input_data/surface.surf.gii  --data input_data/data.func.gii --mask input_data/cortical_mask.shape.gii --full-brain --output full_brain_gradient
 ```
 
 Be warned, however, that this analysis can take long, use a large amount of
