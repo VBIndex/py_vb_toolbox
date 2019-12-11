@@ -111,7 +111,7 @@ vb_index --surface input_data/surface.surf.gii  --data input_data/data.func.gii 
 Be warned, however, that this analysis can take long, use a good ammount of
 RAM. In systems with 32k vertices, upwards of 30GB of RAM were used.
 
-### Regions of Interest
+### Regions of Interest analyses
 
 Sometimes, one is interested only in a small set of ROIs. In this case, the way
 for calling the program changes slightly,
@@ -126,6 +126,29 @@ of logical values, the file must contain an array of integers, where each
 integer corresponds to a different cluster. The 0th cluster is special, and
 denotes an area which will *not* be analyzed. In these regards, it has a
 similar use to the cortical mask. 
+
+### Notes on parallelism
+
+`vb_index` uses a high level of parallelism. How many threads are spawned by
+`vb_index` itself can be controlled using the `-j/--jobs` flag. By default, it
+will try to use all the CPUs in your computer at the same time to perform the
+analyzes. Depending on the BLAS installation in your computer, this might not
+be the best fastest approach, but rarely will be the slowest. If you are
+unsure, leave the number of jobs at the default level.
+
+Due to job structure of the `vb_index`, the level of parallelism it can achieve
+depends on the specific analyses being carried out. 
+
+1. Searchlight analyses: High level of parallelism. Will spawn as many jobs are
+   there are CPUs
+2. Whole brain analyses: Low lever of parallelism. Will only spawn one job
+3. Region of Interest analyses: Medium level of parallelism. Will spawn as many
+   jobs as there are ROIs, or number of CPUS, whichever is the lowest.
+
+Specially in the whole brain analyses, having a well optimized BLAS installation
+will grandly accelerate the process, and allow for a high degree of paralelism.
+Both MKL and OpenBLAS have been shown to offer great results. If you are using
+the Anaconda distribution, you will have a good BLAS pre-configured.
 
 ## Developer Information
 
