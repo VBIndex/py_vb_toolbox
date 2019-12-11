@@ -15,14 +15,14 @@ import vb_toolbox.vb_index as vb
 
 def create_parser():
     # Get some CLI information
-    parser = argparse.ArgumentParser(description='Calculate the Vogt-Bailey index of a dataset.')
+    parser = argparse.ArgumentParser(description='Calculate the Vogt-Bailey index of a dataset. For more information, check https://github.com/VBIndex/py_vbindex.')
     parser.add_argument('-j', '--jobs', metavar='N', type=int, nargs=1,
                         default=[multiprocessing.cpu_count()], help="""Maximum
                         number of jobs to be used. If abscent, one job per CPU
                         will be spawned""")
 
     parser.add_argument('-n', '--norm', metavar='norm', type=str, nargs=1,
-                        default=["geig"], help="""Laplacian norm to be
+                        default=["geig"], help="""Laplacian normalization to be
                         used. Defaults to unnorm""")
 
     parser.add_argument('-fb', '--full-brain', action='store_true',
@@ -54,10 +54,6 @@ def create_parser():
                                nargs=1, help="""Base name for the
                                               output files""", required=True)
 
-
-
-    # args = parser.parse_args()
-
     return parser
 
 
@@ -74,16 +70,17 @@ def main():
     if args.full_brain:
         print("Performing reordering of the full brain")
         if args.label is None:
-            print("A mask file must be provided with -l flag. See --help for help")
+            print("A mask file must be provided with a mask/label through the --label flag. See --help")
             quit()
         _, labels = io.open_gifti(args.label[0])
         cort_index = np.array(labels, np.bool)
         Z = np.array(cort_index, dtype=np.int)
         result = vb.vb_cluster(vertices, faces, n_cpus, cifti, Z, args.norm[0], args.output[0] + "." + args.norm[0], nib_surf)
+
     elif args.clusters is None:
         print("Running normal version")
         if args.label is None:
-            print("A mask file must be provided with -l flag. See --help for help")
+            print("A mask file must be provided with a mask/label through the --label flag. See --help")
             quit()
         # Read labels
         _, labels = io.open_gifti(args.label[0])
