@@ -108,7 +108,7 @@ Otherwise, the flags are the same as in the searchlight analysis.
 vb_index --surface input_data/surface.surf.gii  --data input_data/data.func.gii --label input_data/cortical_mask.shape.gii --full-brain --output full_brain_gradient
 ```
 
-Be warned, however, that this analysis can take long, use a good ammount of
+Be warned, however, that this analysis can take long, use a large amount of
 RAM. In systems with 32k vertices, upwards of 30GB of RAM were used.
 
 ### Regions of Interest analyses
