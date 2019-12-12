@@ -21,17 +21,17 @@ pip install vb_toolbox
 ```
 
 If your pip is properly configured, you can now use the program `vb_tool` from
-your command line, and import any of the submodules in the `vb_toolbox` in your python 
+your command line, and import any of the submodules in the `vb_toolbox` in your python
 interpreter.
 
-## Usage of `vb_tool` CLI 
+## Usage of `vb_tool` CLI
 
 If VBIndex was installed via `pip`, the command line program `vb_tool` should
 be available in your terminal. You can test if the program is correctly
 installed by typing
 
 ```bash
-vb_tool -h 
+vb_tool -h
 ```
 
 in your terminal. If you see the following output, the program has been
@@ -67,8 +67,8 @@ required named arguments:
                         Base name for the output files
 ```
 
-If you copied the program source code, the executable is found in `vb_toolbox/app.py`. 
-You can test the program using 
+If you copied the program source code, the executable is found in `vb_toolbox/app.py`.
+You can test the program using
 
 ```bash
 python3 vb_toolbox/app.py
@@ -79,15 +79,15 @@ which should yield the results shown above.
 There are three main uses for the `vb_tool`
 
 1. Searchlight analyses
-2. Whole brain gradient maps
-3. Gradient maps in a specified set of regions of interest
+2. Whole brain feature gradient analyses
+3. Feature gradient analyses in a specified set of regions of interest
 
 ### Searchlight analyses
 
-The per vertex analyses can be carried with the following command
+The per vertex VB index analyses can be carried with the following command
 
 ```bash
-vb_tool --surface input_data/surface.surf.gii  --data input_data/data.func.gii --mask input_data/cortical_mask.shape.gii --output search_light 
+vb_tool --surface input_data/surface.surf.gii  --data input_data/data.func.gii --mask input_data/cortical_mask.shape.gii --output search_light
 ```
 
 The number of vertices in the surface mesh must match the number of entries in
@@ -96,7 +96,7 @@ the data and in the mask.
 The cortical mask must contain a logical array, with `True` values in the
 region on which the analyses will be carried out, and `False` in the regions to
 be left out. This is most commonly used to mask out midbrain structures which
-would otherwise influence the analysis of the cortical regions. 
+would otherwise influence the analysis of the cortical regions.
 
 
 ### Whole brain analyses
@@ -125,7 +125,7 @@ modalities. However, its structure is slightly different. Instead of an array
 of logical values, the file must contain an array of integers, where each
 integer corresponds to a different cluster. The 0th cluster is special, and
 denotes an area which will *not* be analyzed. In these regards, it has a
-similar use to the cortical mask. 
+similar use to the cortical mask.
 
 ### Notes on parallelism
 
@@ -137,7 +137,7 @@ be the best fastest approach, but rarely will be the slowest. If you are
 unsure, leave the number of jobs at the default level.
 
 Due to job structure of the `vb_tool`, the level of parallelism it can achieve
-on its own depends on the specific analyses being carried out. 
+on its own depends on the specific analyses being carried out.
 
 1. Searchlight analyses: High level of parallelism. Will spawn as many jobs are
    there are CPUs

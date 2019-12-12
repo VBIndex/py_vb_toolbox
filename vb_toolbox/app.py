@@ -23,10 +23,10 @@ def create_parser():
 
     parser.add_argument('-n', '--norm', metavar='norm', type=str, nargs=1,
                         default=["geig"], help="""Laplacian normalization to be
-                        used. Defaults to unnorm""")
+                        used. Defaults to geig.""")
 
     parser.add_argument('-fb', '--full-brain', action='store_true',
-                        help="""Calculate full brain spectral reordering.""")
+                        help="""Calculate full brain feature gradient analyses.""")
 
     parser.add_argument('-m', '--mask', metavar='file', type=str,
                                nargs=1, help="""File containing the labels to
