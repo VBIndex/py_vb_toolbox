@@ -34,7 +34,7 @@ installed by typing
 vb_tool -h
 ```
 
-in your terminal. If you see the following output, the program has been
+In your terminal, if you see the following output, the program has been
 properly installed.
 
 ```
@@ -84,7 +84,7 @@ There are three main uses for the `vb_tool`
 
 ### Searchlight analyses
 
-The per vertex VB index analyses can be carried with the following command
+The per vertex VB-index analyses can be carried with the following command
 
 ```bash
 vb_tool --surface input_data/surface.surf.gii  --data input_data/data.func.gii --mask input_data/cortical_mask.shape.gii --output search_light
@@ -101,8 +101,8 @@ would otherwise influence the analysis of the cortical regions.
 
 ### Whole brain analyses
 
-To perform full brain analyses, the flag `-fb` or `--full-brain` must be set.
-Otherwise, the flags are the same as in the searchlight analysis.
+To perform full brain feature gradient analyses and the associated VB-index, the flag 
+`-fb` or `--full-brain` must be set. Otherwise, the flags are the same as in the searchlight analysis.
 
 ```bash
 vb_tool --surface input_data/surface.surf.gii  --data input_data/data.func.gii --mask input_data/cortical_mask.shape.gii --full-brain --output full_brain_gradient
@@ -113,8 +113,9 @@ RAM. In systems with 32k vertices, upwards of 30GB of RAM were used.
 
 ### Regions of Interest analyses
 
-Sometimes, one is interested only in a small set of ROIs. In this case, the way
-for calling the program changes slightly,
+Sometimes, one is interested only in a small set of ROIs. In this case, the
+feature gradient maps and the associated VB-index value for each ROI will be
+extracted. The way of calling the program is as follows:
 
 ```bash
 vb_tool --surface input_data/surface.surf.gii  --data input_data/data.func.gii  -c input_data/clusters.shape.gii --output clustered_analyses
@@ -154,6 +155,9 @@ pre-configured.
 ## Developer Information
 
 ### Build
+
+The following information is only useful for individuals who are actively
+contributing to the program.
 
 We use setuptool and wheel to build the distribution code. The process is
 described next. More information can be found
