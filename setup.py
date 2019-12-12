@@ -4,14 +4,14 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="VBIndex",
+    name="vb_toolbox",
     version="0.0.4",
     author="Lucas da Costa Campos",
     author_email="lqccampos@gmail.com",
     description="Library and command-line tool to calculate the Vogt-Bailey index of a dataset",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/VBIndex/py_vbindex",
+    url="https://github.com/VBIndex/py_vb_toolbox",
     packages=setuptools.find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",
