@@ -61,17 +61,6 @@ def solve_general_eigenproblem(Q, D=None, is_symmetric=True):
                   Note: The matrix is transposed in relation to standard Numpy
     """
 
-    # q_max = np.max(np.abs(Q - Q.transpose()))
-    # print("Max error in Q: {}".format(q_max))
-    # np.save("Q.npy", Q)
-    # if D is not None:
-    #     np.save("D.npy", D)
-    #     d_max = np.max(np.abs(D - D.transpose()))
-    #     print("Max error in D: {}".format(d_max))
-
-    # print("saved")
-
-    # is_symmetric = False
     if is_symmetric:
         if D is None:
             eigenvalues, eigenvectors = spl.eigh(Q, check_finite=False)
@@ -92,9 +81,6 @@ def solve_general_eigenproblem(Q, D=None, is_symmetric=True):
     eigenvalues = np.real(eigenvalues)
     eigenvectors = np.real(eigenvectors)
 
-    # np.save("eigenvectors_original.npy", eigenvectors)
-    # np.save("eigenvalues_original.npy", eigenvalues)
-
 
     if D is not None:
         # By default, scipy returns eigenvectos normalised in the Frobenius
@@ -108,10 +94,7 @@ def solve_general_eigenproblem(Q, D=None, is_symmetric=True):
 
     # Sort eigen pairs in increasing order of eigenvalues
     sort_eigen = np.argsort(eigenvalues)
-    # eigenvalues = eigenvalues[sort_eigen]
     eigenvectors = eigenvectors[:, sort_eigen]
-    # np.save("eigenvectors_sorted.npy", eigenvectors)
-    # np.save("eigenvalues_sorted.npy", eigenvalues)
 
     return eigenvalues, eigenvectors
 
@@ -145,7 +128,6 @@ def spectral_reorder(B, method = 'geig'):
     min_b = np.min(B)
     assert min_b >= -1.0, "This function only accepts matrices with a mininum negative value of -1"
 
-    # __import__('pdb').set_trace()
     if min_b < 0:
         warnings.warn("""
         The value 1 is being added to your similarity matrix to ensure positivity.
@@ -193,12 +175,9 @@ def spectral_reorder(B, method = 'geig'):
       # Method using eigen decomposition of Random Walk Normalised Laplacian
       # This method has not been rigorously tested yet
 
-        # T = D
-        # L = spl.solve(T, Q)
         L = spl.solve(D, Q)
 
         eigenvalues, eigenvectors = solve_general_eigenproblem(L, is_symmetric=False)
-        # eigenvectors = -eigenvectors
 
     elif method == 'unnorm':
 
@@ -209,7 +188,6 @@ def spectral_reorder(B, method = 'geig'):
         Please choose one of the following: 'sym', 'rw', 'geig', 'unnorm'.""".format(method))
 
     v2 = eigenvectors[:, 1] # Get Fiedler vector
-    # np.save("v2.npy", v2)
     sort_idx = np.argsort(v2) # Find the reordering index
     sorted_B = B[sort_idx,:] # Reorder the original matrix
     sorted_B = sorted_B[:,sort_idx] # Reorder the original matrix
@@ -240,12 +218,10 @@ def create_affinity_matrix(neighborhood, eps=np.finfo(float).eps):
     neighborhood_mc = neighborhood - neighborhood_mean.reshape(-1, 1)
     neighborhood_mc[np.abs(neighborhood_mc)<eps] = eps
 
-    # __import__('pdb').set_trace()
     # Normalise the mean centered neighborhood
     neighborhood_w = np.sqrt(np.sum(neighborhood_mc**2, axis=-1)).reshape(-1, 1)
     neighborhood_scaled = neighborhood_mc/neighborhood_w
 
-    # affinity = np.dot(neighborhood.transpose(), neighborhood)
     affinity = np.dot(neighborhood_scaled, neighborhood_scaled.transpose())
     affinity[affinity > 1.0] = 1.0
 
@@ -259,7 +235,5 @@ def create_affinity_matrix(neighborhood, eps=np.finfo(float).eps):
 
     # Remove negative correlations
     A[A<0] = eps
-
-    # __import__('pdb').set_trace()
 
     return A
