@@ -65,6 +65,7 @@ required named arguments:
   -d file, --data file  File containing the data over the surface
   -o file, --output file
                         Base name for the output files
+
 ```
 
 If you copied the program source code, the executable is found in `vb_toolbox/app.py`.
