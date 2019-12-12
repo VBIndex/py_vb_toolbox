@@ -17,7 +17,7 @@ scipy
 The preferred way to install is through pip. It is as easy as
 
 ```bash
-pip install VBIndex
+pip install vb_toolbox
 ```
 
 If your pip is properly configured, you can now use the program `vb_tool` from
