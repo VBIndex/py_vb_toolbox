@@ -38,7 +38,7 @@ in your terminal. If you see the following output, the program has been
 properly installed.
 
 ```
-usage: app.py [-h] [-j N] [-n norm] [-fb] [-m file] [-c file] -s file -d file
+usage: vb_tool [-h] [-j N] [-n norm] [-fb] [-m file] [-c file] -s file -d file
               -o file
 
 Calculate the Vogt-Bailey index of a dataset. For more information, check
