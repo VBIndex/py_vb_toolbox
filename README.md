@@ -156,7 +156,7 @@ pre-configured.
 
 ### Build
 
-The following information is only useful for individuals who are activly
+The following information is only useful for individuals who are actively
 contributing to the program.
 
 We use setuptool and wheel to build the distribution code. The process is
