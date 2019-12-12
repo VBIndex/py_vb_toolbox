@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="VBIndex",
-    version="0.0.2",
+    version="0.0.4",
     author="Lucas da Costa Campos",
     author_email="lqccampos@gmail.com",
     description="Library and command-line tool to calculate the Vogt-Bailey index of a dataset",
@@ -28,7 +28,7 @@ setuptools.setup(
     ],
     entry_points={
         'console_scripts':[
-            'vb_index = vb_toolbox.app:main',
+            'vb_tool = vb_toolbox.app:main',
         ]
     }
 )
