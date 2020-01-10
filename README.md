@@ -50,7 +50,7 @@ optional arguments:
                         per CPU will be spawned
   -n norm, --norm norm  Laplacian normalization to be used. Possibilities are
                         "geig", "unnorm", "rw" and "sym". Defaults to geig.
-  -fb, --full-brain     Calculate full brain spectral reordering.
+  -fb, --full-brain     Calculate full brain feature gradient analyses.
   -m file, --mask file  File containing the labels to identify the cortex,
                         rather than the medial brain structures. This flag
                         must be set for normal analyses and full brain
@@ -66,6 +66,25 @@ required named arguments:
   -d file, --data file  File containing the data over the surface
   -o file, --output file
                         Base name for the output files
+
+authors:
+
+Lucas da Costa Campos (lqccampos (at) gmail.com) and Claude J Bajada
+(claude.bajada (at) um.edu.mt).
+
+copyright:
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with
+this program. If not, see <https://www.gnu.org/licenses>.
 ```
 
 If you copied the program source code, the executable is found in `vb_toolbox/app.py`.
