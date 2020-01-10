@@ -48,8 +48,9 @@ optional arguments:
   -h, --help            show this help message and exit
   -j N, --jobs N        Maximum number of jobs to be used. If abscent, one job
                         per CPU will be spawned
-  -n norm, --norm norm  Laplacian normalization to be used. Defaults to geig.
-  -fb, --full-brain     Calculate full brain feature gradient analyses.
+  -n norm, --norm norm  Laplacian normalization to be used. Possibilities are
+                        "geig", "unnorm", "rw" and "sym". Defaults to geig.
+  -fb, --full-brain     Calculate full brain spectral reordering.
   -m file, --mask file  File containing the labels to identify the cortex,
                         rather than the medial brain structures. This flag
                         must be set for normal analyses and full brain
