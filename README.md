@@ -1,3 +1,8 @@
+
+
+[![DOI](https://zenodo.org/badge/224148416.svg)](https://zenodo.org/badge/latestdoi/224148416)
+
+
 # VBIndex
 Vogt-Bailey index toolbox in Python
 
