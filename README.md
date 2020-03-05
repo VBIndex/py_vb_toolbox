@@ -153,6 +153,14 @@ integer corresponds to a different cluster. The 0th cluster is special, and
 denotes an area which will *not* be analyzed. In these regards, it has a
 similar use to the cortical mask.
 
+### Note on the data file
+
+`vb_tool` can handle two separate cases. If there is a single structure in the
+file, `vb_tool` will read it as a matrix on which each row relates to each
+vertex. If there are two or more structures, it will read them as a series of
+column vectors, on which each entry relates to a vertex. It will then coalesce
+them into a single matrix, and run the analyses of all quantities concurrently.
+
 ### Notes on parallelism
 
 `vb_tool` uses a high level of parallelism. How many threads are spawned by
