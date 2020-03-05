@@ -93,7 +93,10 @@ def main():
     n_cpus = args.jobs[0]
     nib_surf, vertices, faces = io.open_gifti_surf(args.surface[0])
     nib = nibabel.load(args.data[0])
-    cifti = nib.darrays[0].data
+    if len(nib.darrays) > 1:
+        cifti = np.array([n.data for n in nib.darrays]).transpose()
+    else:
+        cifti = nib.darrays[0].data
 
     if args.full_brain:
         print("Running full brain analyses")
