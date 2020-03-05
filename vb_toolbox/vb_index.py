@@ -27,7 +27,7 @@ def init(a_counter, a_n):
     n = a_n
 
 def vb_index_internal_loop(i0, iN, surf_faces, data, norm, print_progress=False):
-    """Computes the Voigt-Bailey index of vertices in a given range
+    """Computes the Vogt-Bailey index of vertices in a given range
 
        Parameters
        ----------
@@ -85,7 +85,7 @@ def vb_index_internal_loop(i0, iN, surf_faces, data, norm, print_progress=False)
     return loc_result
 
 def vb_index(surf_vertices, surf_faces, n_cpus, data, norm, cort_index, output_name=None, nib_surf=None):
-    """Computes the Voigt-Bailey index of vertices for the whole mesh
+    """Computes the Vogt-Bailey index of vertices for the whole mesh
 
        Parameters
        ----------
@@ -149,7 +149,7 @@ def vb_index(surf_vertices, surf_faces, n_cpus, data, norm, cort_index, output_n
     return results
 
 def vb_cluster_internal_loop(idx_cluster_0, idx_cluster_N, surf_faces, data, cluster_index, norm, print_progress=False):
-    """Computes the Voigt-Bailey index of vertices of given clusters
+    """Computes the Vogt-Bailey index of vertices of given clusters
 
        Parameters
        ----------
@@ -213,7 +213,7 @@ def vb_cluster_internal_loop(idx_cluster_0, idx_cluster_N, surf_faces, data, clu
     return loc_result
 
 def vb_cluster(surf_vertices, surf_faces, n_cpus, data, cluster_index, norm, output_name = None, nib_surf=None):
-    """Computes the clustered Voigt-Bailey index of vertices for the whole mesh
+    """Computes the clustered Vogt-Bailey index of vertices for the whole mesh
 
        Parameters
        ----------

@@ -27,7 +27,7 @@ def open_gifti_surf(filename):
             Faces of the mesh.
     """
     nib = nibabel.load(filename)
-    return nib, nib.darrays[0].data,  nib.darrays[1].data
+    return nib, nib.get_arrays_from_intent('pointset')[0].data,  nib.get_arrays_from_intent('triangle')[0].data
 
 def open_gifti(filename):
     """
@@ -45,6 +45,9 @@ def open_gifti(filename):
           Data in the file.
     """
     nib = nibabel.load(filename)
+
+    # We use the first data as this is agnostic to the intent. In the future we
+    # might want to change it.
     return nib, nib.darrays[0].data
 
 def save_gifti(og_img, data, filename):
