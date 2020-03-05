@@ -65,12 +65,14 @@ def vb_index_internal_loop(i0, iN, surf_faces, data, norm, print_progress=False)
         neighborhood = data[I]
         if len(neighborhood) == 0:
             print("Warning: no neighborhood")
+            return [0]
 
         # Calculate the eigenvalues
         affinity = m.create_affinity_matrix(neighborhood)
         _, _, _, eigenvalues, _ = m.spectral_reorder(affinity, norm)
         normalisation_factor = np.average(eigenvalues[1:])
 
+        # return [0]
         # Store the result of this run
         loc_result[idx] = eigenvalues[1]/normalisation_factor
 
@@ -80,7 +82,8 @@ def vb_index_internal_loop(i0, iN, surf_faces, data, norm, print_progress=False)
             global n
             with counter.get_lock():
                 counter.value += 1
-            print("{}/{}".format(counter.value, n))
+            if counter.value % 1000 == 0:
+                print("{}/{}".format(counter.value, n))
 
     return loc_result
 
@@ -120,7 +123,7 @@ def vb_index(surf_vertices, surf_faces, n_cpus, data, norm, cort_index, output_n
     # Init multiprocessing components
     counter = Value('i', 0)
     pool = Pool(initializer = init, initargs = (counter, n_items))
-
+    # vb_index_internal_loop(0, n_items, surf_faces, data, norm)
     # Spawn the threads that are going to do the real work
     threads = []
     for i0 in range(0, n_items, dn):
@@ -208,7 +211,8 @@ def vb_cluster_internal_loop(idx_cluster_0, idx_cluster_N, surf_faces, data, clu
             global n
             with counter.get_lock():
                 counter.value += 1
-            print("{}/{}".format(counter.value, n))
+            if counter.value % 1000 == 0:
+                print("{}/{}".format(counter.value, n))
 
     return loc_result
 
