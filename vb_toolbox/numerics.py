@@ -51,13 +51,13 @@ def solve_general_eigenproblem(Q, D=None, is_symmetric=True):
         standard eigenproblem.
     is_symmetric: boolean
                   Indicates whether Q *and* D are symmetric.
-                  If set, the program will use a much faster, but less general, 
+                  If set, the program will use a much faster, but less general,
                   algorithm
 
     Returns
     -------
     eigenvalues: Numpy array with eigenvalues
-    eigenvectors: Numpy array with eigenvectors. 
+    eigenvectors: Numpy array with eigenvectors.
                   Note: The matrix is transposed in relation to standard Numpy
     """
 
@@ -76,7 +76,7 @@ def solve_general_eigenproblem(Q, D=None, is_symmetric=True):
     # A   vr[:,i] = w[i] B vr[:,i]
     # That is, the index of the eigenvector is on the second index,
     # while the entry is in the first index.
-    # Thus, when we need to sort the the eigenvectors, we only need to 
+    # Thus, when we need to sort the the eigenvectors, we only need to
     # sort in the second index
     eigenvalues = np.real(eigenvalues)
     eigenvectors = np.real(eigenvectors)
@@ -194,7 +194,7 @@ def spectral_reorder(B, method = 'geig'):
 
     return sorted_B, sort_idx, v2, eigenvalues, eigenvectors
 
-def create_affinity_matrix(neighborhood, eps=np.finfo(float).eps):
+def create_affinity_matrix(neighborhood, eps=np.finfo(float).eps, verbose=False):
     """
     Computes the affinity matrix of a given neighborhood
 
@@ -213,17 +213,29 @@ def create_affinity_matrix(neighborhood, eps=np.finfo(float).eps):
     neighborhood_len = neighborhood.shape[0]
     neighborhood = neighborhood.reshape(neighborhood_len, -1)
     # Here, the affinity matrix should have n_neighbors x data_size shape
-    # Create a mean centered neighborhood
-    neighborhood_mean = np.mean(neighborhood, axis=-1)
-    neighborhood_mc = neighborhood - neighborhood_mean.reshape(-1, 1)
-    neighborhood_mc[np.abs(neighborhood_mc)<eps] = eps
+    if neighborhood.shape[1] < 3:
+        neighborhood_scaled = neighborhood
+    else:
+        # Create a mean centered neighborhood
+        neighborhood_mean = np.mean(neighborhood, axis=-1)
+        neighborhood_mc = neighborhood - neighborhood_mean.reshape(-1, 1)
+        neighborhood_mc[np.abs(neighborhood_mc)<eps] = eps
 
-    # Normalise the mean centered neighborhood
-    neighborhood_w = np.sqrt(np.sum(neighborhood_mc**2, axis=-1)).reshape(-1, 1)
-    neighborhood_scaled = neighborhood_mc/neighborhood_w
+        if verbose:
+            print("neighborhood_mean")
+            print(neighborhood_mean)
+
+            print("neighborhood_mc")
+            print(neighborhood_mc)
+
+        # Normalise the mean centered neighborhood
+        neighborhood_w = np.sqrt(np.sum(neighborhood_mc**2, axis=-1)).reshape(-1, 1)
+        neighborhood_scaled = neighborhood_mc/neighborhood_w
 
     affinity = np.dot(neighborhood_scaled, neighborhood_scaled.transpose())
     affinity[affinity > 1.0] = 1.0
+    affinity[affinity < -1.0] = -1.0
+
 
     # "Linearlise" the affinity ensure positive correlations are between 0 to 1
     # what i am doing here is to change cosines to angles but to ensure that
@@ -232,8 +244,13 @@ def create_affinity_matrix(neighborhood, eps=np.finfo(float).eps):
     # rather than 0. 90/90 == 1.
     A = np.arcsin(affinity)/np.pi*180.0
     A = A/90.0
-
     # Remove negative correlations
     A[A<0] = eps
+
+    if verbose:
+        print("affinity")
+        print(affinity)
+        print("A")
+        print(A)
 
     return A
