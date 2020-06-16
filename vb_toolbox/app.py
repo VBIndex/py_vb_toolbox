@@ -13,6 +13,7 @@ import numpy as np
 import textwrap as _textwrap
 import vb_toolbox.io as io
 import vb_toolbox.vb_index as vb
+from bids import BIDSLayout
 
 class MultilineFormatter(argparse.HelpFormatter):
     def _fill_text(self, text, width, indent):
@@ -66,12 +67,18 @@ def create_parser():
                         help="""File containing the surface clusters. Cluster
                         with index 0 are expected to denote the medial brain
                         structures and will be ignored.""")
+    
+    parser.add_argument('-sub', '--bids_sub', metavar='lisr', nargs='1', type=str, default=None,
+                        help="""List of subjects to analyse in the bids folder""")
+
+    data_source = parser.add_mutually_exclusive_group(required=True)  # require either a regular folder or bids folder
+    data_source.add_argument('-s', '--surface', metavar='file', type=str,
+                               nargs=1, help="""File containing the surface
+                                              mesh""")
+    data_source.add_argument('-bids', '--bids', metavar='file', type=str,
+                               nargs=1, help="""Path to BIDS folder""")
 
     requiredNamed = parser.add_argument_group('required named arguments')
-
-    requiredNamed.add_argument('-s', '--surface', metavar='file', type=str,
-                               nargs=1, help="""File containing the surface
-                                              mesh""", required=True)
 
     requiredNamed.add_argument('-d', '--data', metavar='file', type=str,
                                nargs=1, help="""File containing the data over
@@ -91,7 +98,21 @@ def main():
     args = parser.parse_args()
 
     n_cpus = args.jobs[0]
-    nib_surf, vertices, faces = io.open_gifti_surf(args.surface[0])
+    
+    if args.bids:
+        if (args.bids_sub is None):  # if bids folder is provided but no subject, raise error
+            parser.error("--bids requires --bids_sub")
+        else:  # both bids and bids_sub
+            layout = BIDSLayout(args.bids[0])
+            if args.bids_sub[0] not in layout.get_subjects():
+                parser.error("Unknown subject, not in BIDS structure")
+            else:
+                f = layout.get(subject=args.bids_sub[0], extension='gii.gz')[0]
+                nib_surf, vertices, faces = io.open_gifti_surf(f) # hoping this f contains the file. TODO
+    else:
+        nib_surf, vertices, faces = io.open_gifti_surf(args.surface[0])
+            
+    
     nib = nibabel.load(args.data[0])
     if len(nib.darrays) > 1:
         cifti = np.array([n.data for n in nib.darrays]).transpose()

@@ -24,7 +24,8 @@ setuptools.setup(
         "numpy",
         "scipy",
         "nibabel",
-        "multiprocess"
+        "multiprocess",
+        "pybids",
     ],
     entry_points={
         'console_scripts':[
