@@ -1,0 +1,9 @@
+display_name;flag;option;reqired;default;help;strvar;
+Surface file;s;surface;1;None;File containing the surface mesh;;
+Data File;d;data;1;None;File containing the data over the surface;;
+Output Name;o;output;1;None;Base name for the output files;;
+Number of jobs;j;jobs;0;default;Maximum number of jobs to be used. If abscent,onejobperCPU will be spawned;;
+Normalization;n;norm;0;geig;Laplacian normalization to be used. Possibilities are "geig", "unnorm", "rw" and "sym". Defaults to geig;;
+Full brain gradient analyses;fb;full-brain;0;No;Calculate full brain feature gradient analyses;;
+Mask file;m;mask;0;None;File containing the labels to identify the cortex, rather than the medial brain structures. This flag must be set for normal analyses and full brain analyses;;
+Clusters file;c;clusters;0;None;File containing the surface clusters. Cluster with index 0 are expected to denote the medial brain structures and will be ignored;;
