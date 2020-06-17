@@ -71,33 +71,44 @@ class vp_toolbox_gui:
         self.frame_run = tk.Frame(self.master)
         self.frame_run.grid(row=0, column=1)
 
-        tk.Label(self.frame_run, anchor='w', justify=tk.LEFT, text='SETTINGS:\n\nRequired arguments:').grid(row=0, column=0, sticky=tk.W)
-        tk.Button(self.frame_run, text="Set surface file:", command=lambda: self.fname_to_flag('-s')).grid(row=1, column=0, sticky=tk.W)
-        tk.Label(self.frame_run, textvariable=self.var_dict['-s']).grid(row=1, column=1, sticky=tk.W)
-        tk.Button(self.frame_run, text="Set data file:", command=lambda: self.fname_to_flag('-d')).grid(row=2, column=0, sticky=tk.W)
-        tk.Label(self.frame_run, textvariable=self.var_dict['-d']).grid(row=2, column=1, sticky=tk.W)
-        tk.Button(self.frame_run, text="Set output name:", command=self.set_output_name).grid(row=3, column=0, sticky=tk.W)
-        tk.Label(self.frame_run, textvariable=self.var_dict['-o']).grid(row=3, column=1, sticky=tk.W)
+        tk.Label(self.frame_run, anchor='w', justify=tk.LEFT, text='SETTINGS:\n\nRequired arguments:').grid(row=0, column=1, sticky=tk.W)
+        tk.Button(self.frame_run, text="Set surface file:", command=lambda: self.fname_to_flag('-s')).grid(row=1, column=1, sticky=tk.W)
+        tk.Label(self.frame_run, textvariable=self.var_dict['-s']).grid(row=1, column=2, sticky=tk.W)
+        tk.Button(self.frame_run, text="?", command=lambda: self.show_help('-s')).grid(row=1, column=0)
 
-        tk.Label(self.frame_run, text='Optional arguments:').grid(row=4, column=0, sticky=tk.W)
-        tk.Button(self.frame_run, text="Set mask file:", command=lambda: self.fname_to_flag('-m')).grid(row=5, column=0, sticky=tk.W)
-        tk.Label(self.frame_run, textvariable=self.var_dict['-m']).grid(row=5, column=1, sticky=tk.W)
-        tk.Button(self.frame_run, text="Set cluster file:", command=lambda: self.fname_to_flag('-c')).grid(row=6, column=0, sticky=tk.W)
-        tk.Label(self.frame_run, textvariable=self.var_dict['-c']).grid(row=6, column=1, sticky=tk.W)
+        tk.Button(self.frame_run, text="Set data file:", command=lambda: self.fname_to_flag('-d')).grid(row=2, column=1, sticky=tk.W)
+        tk.Label(self.frame_run, textvariable=self.var_dict['-d']).grid(row=2, column=2, sticky=tk.W)
+        tk.Button(self.frame_run, text="?", command=lambda: self.show_help('-d')).grid(row=2, column=0)
 
-        tk.Label(self.frame_run, text='Jobs:').grid(row=7, column=0, sticky=tk.W)
-        tk.Entry(self.frame_run, textvariable=self.var_dict['-j']).grid(row=7, column=1, sticky=tk.W)
+        tk.Button(self.frame_run, text="Set output name:", command=self.set_output_name).grid(row=3, column=1, sticky=tk.W)
+        tk.Label(self.frame_run, textvariable=self.var_dict['-o']).grid(row=3, column=2, sticky=tk.W)
+        tk.Button(self.frame_run, text="?", command=lambda: self.show_help('-o')).grid(row=3, column=0)
 
-        tk.Label(self.frame_run, text='Full brain analysis:').grid(row=8, column=0, sticky=tk.W)
-        tk.Button(self.frame_run, textvariable=self.var_dict['-fb'], command=self.toggle_fb).grid(row=8, column=1, sticky=tk.W)
+        tk.Label(self.frame_run, text='\nOptional arguments:').grid(row=4, column=1, sticky=tk.W)
+        tk.Button(self.frame_run, text="Set mask file:", command=lambda: self.fname_to_flag('-m')).grid(row=5, column=1, sticky=tk.W)
+        tk.Label(self.frame_run, textvariable=self.var_dict['-m']).grid(row=5, column=2, sticky=tk.W)
+        tk.Button(self.frame_run, text="?", command=lambda: self.show_help('-m')).grid(row=5, column=0)
 
-        tk.Label(self.frame_run, text='Normalization:').grid(row=9, column=0, sticky=tk.W)
-        tk.OptionMenu(self.frame_run, self.var_dict['-n'], "geig", "unnorm", "rw", "sym").grid(row=9, column=1, sticky=tk.W)
+        tk.Button(self.frame_run, text="Set cluster file:", command=lambda: self.fname_to_flag('-c')).grid(row=6, column=1, sticky=tk.W)
+        tk.Label(self.frame_run, textvariable=self.var_dict['-c']).grid(row=6, column=2, sticky=tk.W)
+        tk.Button(self.frame_run, text="?", command=lambda: self.show_help('-c')).grid(row=6, column=0)
 
-        tk.Button(self.frame_run, anchor='n', text='--> Run vb_tool <--', command=self.run_analysis).grid(sticky=tk.N+tk.W)
+        tk.Label(self.frame_run, text='Jobs:').grid(row=7, column=1, sticky=tk.W)
+        tk.Entry(self.frame_run, textvariable=self.var_dict['-j']).grid(row=7, column=2, sticky=tk.W)
+        tk.Button(self.frame_run, text="?", command=lambda: self.show_help('-j')).grid(row=7, column=0)
 
-        tk.Label(self.frame_run, text='Command:').grid(sticky=tk.W)
-        tk.Label(self.frame_run, width=20, anchor='w', justify=tk.LEFT, textvariable=self.vb_cmd, bg='white', fg='black').grid(sticky=tk.W)
+        tk.Label(self.frame_run, text='Full brain analysis:').grid(row=8, column=1, sticky=tk.W)
+        tk.Button(self.frame_run, textvariable=self.var_dict['-fb'], command=self.toggle_fb).grid(row=8, column=2, sticky=tk.W)
+        tk.Button(self.frame_run, text="?", command=lambda: self.show_help('-fb')).grid(row=8, column=0)
+
+        tk.Label(self.frame_run, text='Normalization:').grid(row=9, column=1, sticky=tk.W)
+        tk.OptionMenu(self.frame_run, self.var_dict['-n'], "geig", "unnorm", "rw", "sym").grid(row=9, column=2, sticky=tk.W)
+        tk.Button(self.frame_run, text="?", command=lambda: self.show_help('-n')).grid(row=9, column=0)
+
+        tk.Button(self.frame_run, anchor='n', text='--> Run vb_tool <--', pady=10, fg='red', command=self.run_analysis).grid(row=10, column=1, sticky=tk.N+tk.W)
+
+        tk.Label(self.frame_run, text='Command:').grid(row=11, column=1, sticky=tk.W)
+        tk.Label(self.frame_run, width=20, anchor='w', justify=tk.LEFT, textvariable=self.vb_cmd, bg='white', fg='black').grid(row=12, column=1, sticky=tk.W)
 
         # frame view
         self.frame_view = tk.Frame(self.master)
@@ -161,6 +172,9 @@ class vp_toolbox_gui:
         fname = filedialog.askdirectory(initialdir=self.pwd, title="Select a Folder")
         if fname:
             self.view_folder.set(fname)
+
+    def show_help(self, flag):
+        messagebox.showinfo("Argument settings", self.args[flag].help)
 
 
 if __name__ == "__main__":
