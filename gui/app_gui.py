@@ -1,33 +1,41 @@
 import tkinter as tk
-from tkinter import ttk
 import webbrowser
 from tkinter import filedialog
 import os
 import sys
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../vb_toolbox')
-from app import create_parser
 import pandas as pd
 import subprocess
 from tkinter import messagebox
 from PIL import Image, ImageTk
 import glob
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../vb_toolbox')
+from app import create_parser
+
 
 class vp_toolbox_gui:
     def __init__(self, master):
         self.master = master
         master.title("VB Toolbox v.1.1.0")
 
-        # default settings:
-        self.df_args = pd.read_csv('defaults.csv', delimiter=';')
-        for idx, row in self.df_args.iterrows():
-            self.df_args.loc[idx, 'strvar'] = tk.StringVar()
-            self.df_args.loc[idx, 'strvar'].set(row.default)
+        # get info about arguments from parser
+        self.parser = create_parser()
+        self.args = self.parser.__dict__["_option_string_actions"]
+        flags = list(self.args.keys())
+        flags = [x for x in flags if not '--' in x]
+        self.var_dict = dict((el, tk.StringVar()) for el in flags)
+        for flag, var in self.var_dict.items():
+            if isinstance(self.args[flag].default, list):
+                var.set(str(self.args[flag].default[0]))
+            else:
+                var.set(str(self.args[flag].default))
         self.pwd = os.path.dirname(__file__)
+
         self.vb_cmd = tk.StringVar()
         self.vb_cmd.set("")
         self.view_folder = tk.StringVar()
         self.view_folder.set("None")
-        self.parser = create_parser()
+
+
 
         # frame info
         self.frame_info = tk.Frame(self.master, width=500)
@@ -64,27 +72,27 @@ class vp_toolbox_gui:
         self.frame_run.grid(row=0, column=1)
 
         tk.Label(self.frame_run, anchor='w', justify=tk.LEFT, text='SETTINGS:\n\nRequired arguments:').grid(row=0, column=0, sticky=tk.W)
-        tk.Button(self.frame_run, text="Set surface file:", command=self.set_surf_fname).grid(row=1, column=0, sticky=tk.W)
-        tk.Label(self.frame_run, textvariable=self.df_args.loc[self.df_args.flag == 's']['strvar'].values[0]).grid(row=1, column=1, sticky=tk.W)
-        tk.Button(self.frame_run, text="Set data file:", command=self.set_data_fname).grid(row=2, column=0, sticky=tk.W)
-        tk.Label(self.frame_run, textvariable=self.df_args.loc[self.df_args.flag == 'd']['strvar'].values[0]).grid(row=2, column=1, sticky=tk.W)
-        tk.Button(self.frame_run, text="Set output name:", command=self.set_output_fname).grid(row=3, column=0, sticky=tk.W)
-        tk.Label(self.frame_run, textvariable=self.df_args.loc[self.df_args.flag == 'o']['strvar'].values[0]).grid(row=3, column=1, sticky=tk.W)
+        tk.Button(self.frame_run, text="Set surface file:", command=lambda: self.fname_to_flag('-s')).grid(row=1, column=0, sticky=tk.W)
+        tk.Label(self.frame_run, textvariable=self.var_dict['-s']).grid(row=1, column=1, sticky=tk.W)
+        tk.Button(self.frame_run, text="Set data file:", command=lambda: self.fname_to_flag('-d')).grid(row=2, column=0, sticky=tk.W)
+        tk.Label(self.frame_run, textvariable=self.var_dict['-d']).grid(row=2, column=1, sticky=tk.W)
+        tk.Button(self.frame_run, text="Set output name:", command=self.set_output_name).grid(row=3, column=0, sticky=tk.W)
+        tk.Label(self.frame_run, textvariable=self.var_dict['-o']).grid(row=3, column=1, sticky=tk.W)
 
         tk.Label(self.frame_run, text='Optional arguments:').grid(row=4, column=0, sticky=tk.W)
-        tk.Button(self.frame_run, text="Set mask file:", command=self.set_mask_fname).grid(row=5, column=0, sticky=tk.W)
-        tk.Label(self.frame_run, textvariable=self.df_args.loc[self.df_args.flag == 'm']['strvar'].values[0]).grid(row=5, column=1, sticky=tk.W)
-        tk.Button(self.frame_run, text="Set cluster file:", command=self.set_cluster_fname).grid(row=6, column=0, sticky=tk.W)
-        tk.Label(self.frame_run, textvariable=self.df_args.loc[self.df_args.flag == 'c']['strvar'].values[0]).grid(row=6, column=1, sticky=tk.W)
+        tk.Button(self.frame_run, text="Set mask file:", command=lambda: self.fname_to_flag('-m')).grid(row=5, column=0, sticky=tk.W)
+        tk.Label(self.frame_run, textvariable=self.var_dict['-m']).grid(row=5, column=1, sticky=tk.W)
+        tk.Button(self.frame_run, text="Set cluster file:", command=lambda: self.fname_to_flag('-c')).grid(row=6, column=0, sticky=tk.W)
+        tk.Label(self.frame_run, textvariable=self.var_dict['-c']).grid(row=6, column=1, sticky=tk.W)
 
         tk.Label(self.frame_run, text='Jobs:').grid(row=7, column=0, sticky=tk.W)
-        tk.Entry(self.frame_run, textvariable=self.df_args.loc[self.df_args.flag == 'j']['strvar'].values[0]).grid(row=7, column=1, sticky=tk.W)
+        tk.Entry(self.frame_run, textvariable=self.var_dict['-j']).grid(row=7, column=1, sticky=tk.W)
 
         tk.Label(self.frame_run, text='Full brain analysis:').grid(row=8, column=0, sticky=tk.W)
-        tk.Button(self.frame_run, textvariable=self.df_args.loc[self.df_args.flag == 'fb']['strvar'].values[0], command=self.toggle_fb).grid(row=8, column=1, sticky=tk.W)
+        tk.Button(self.frame_run, textvariable=self.var_dict['-fb'], command=self.toggle_fb).grid(row=8, column=1, sticky=tk.W)
 
         tk.Label(self.frame_run, text='Normalization:').grid(row=9, column=0, sticky=tk.W)
-        tk.OptionMenu(self.frame_run, self.df_args.loc[self.df_args.flag == 'n']['strvar'].values[0], "geig", "unnorm", "rw", "sym").grid(row=9, column=1, sticky=tk.W)
+        tk.OptionMenu(self.frame_run, self.var_dict['-n'], "geig", "unnorm", "rw", "sym").grid(row=9, column=1, sticky=tk.W)
 
         tk.Button(self.frame_run, anchor='n', text='--> Run vb_tool <--', command=self.run_analysis).grid(sticky=tk.N+tk.W)
 
@@ -100,15 +108,15 @@ class vp_toolbox_gui:
         tk.Button(self.frame_view, text='Open wb_view', command=self.open_wb_view).grid(sticky=tk.W)
 
     def run_analysis(self):
-        exclude_list = ['None', 'No', 'default']
+        exclude_list = ['None', 'False', '==SUPPRESS==']
         vb_cmd = 'vb_tool'
-        for ind, arg in self.df_args.iterrows():
-            val = self.df_args.loc[self.df_args.flag == arg.flag]['strvar'].values[0].get()
+        for flag, var in self.var_dict.items():
+            val = var.get()
             if val not in exclude_list:
-                if arg.flag == 'fb':
-                    vb_cmd = f'{vb_cmd} -{arg.flag}'
+                if self.args[flag].nargs == 0:
+                    vb_cmd = f'{vb_cmd} {flag}'
                 else:
-                    vb_cmd = f'{vb_cmd} -{arg.flag} {val}'
+                    vb_cmd = f'{vb_cmd} {flag} {val}'
 
         print(vb_cmd)
         self.vb_cmd.set(vb_cmd.replace(' -', '\n-'))
@@ -119,8 +127,8 @@ class vp_toolbox_gui:
             messagebox.showinfo("An error occured!", stderr)
 
     def open_wb_view(self):
-        surfs = glob.glob(self.view_folder.get() + '/*inflated*')
-        outputs = glob.glob(self.view_folder.get() + '/*vb*')
+        surfs = glob.glob(self.view_folder.get() + '/*.inflated*')
+        outputs = glob.glob(self.view_folder.get() + '/*geig*')
         wb_cmd = 'wb_view'
         for surf in surfs:
             wb_cmd = f'{wb_cmd} {surf}'
@@ -132,38 +140,22 @@ class vp_toolbox_gui:
         print(wb_cmd)
         subprocess.Popen(wb_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
 
-
-    def set_surf_fname(self):
+    def fname_to_flag(self, flag):
         fname = filedialog.askopenfilename(initialdir=self.pwd, title="Select a File")
         if fname:
-            self.df_args.loc[self.df_args.flag == 's']['strvar'].values[0].set(fname)
+            self.var_dict[flag].set(fname)
 
-    def set_data_fname(self):
-        fname = filedialog.askopenfilename(initialdir=self.pwd, title="Select a File")
-        if fname:
-            self.df_args.loc[self.df_args.flag == 'd']['strvar'].values[0].set(fname)
-
-    def set_output_fname(self):
+    def set_output_name(self):
         fname = filedialog.asksaveasfilename(initialdir=self.pwd, title="Set an output name")
         if fname:
-            self.df_args.loc[self.df_args.flag == 'o']['strvar'].values[0].set(fname)
-
-    def set_mask_fname(self):
-        fname = filedialog.askopenfilename(initialdir=self.pwd, title="Select a File")
-        if fname:
-            self.df_args.loc[self.df_args.flag == 'm']['strvar'].values[0].set(fname)
-
-    def set_cluster_fname(self):
-        fname = filedialog.askopenfilename(initialdir=self.pwd, title="Select a File")
-        if fname:
-            self.df_args.loc[self.df_args.flag == 'c']['strvar'].values[0].set(fname)
+            self.var_dict['-o'].set(fname)
+            self.view_folder.set(fname)
 
     def toggle_fb(self):
-        toggle_val = self.df_args.loc[self.df_args.flag == 'fb']['strvar'].values[0].get()
-        if toggle_val == 'Yes':
-            self.df_args.loc[self.df_args.flag == 'fb']['strvar'].values[0].set('No')
+        if self.var_dict['-fb'].get() == 'Yes':
+            self.var_dict['-fb'].set('No')
         else:
-            self.df_args.loc[self.df_args.flag == 'fb']['strvar'].values[0].set('Yes')
+            self.var_dict['-fb'].set('Yes')
 
     def set_view_folder(self):
         fname = filedialog.askdirectory(initialdir=self.pwd, title="Select a Folder")
