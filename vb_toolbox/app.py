@@ -68,8 +68,14 @@ def create_parser():
                         with index 0 are expected to denote the medial brain
                         structures and will be ignored.""")
     
-    parser.add_argument('-sub', '--bids_sub', metavar='lisr', nargs='1', type=str, default=None,
+    parser.add_argument('-sub', '--bids_sub', metavar='str', nargs='1', type=str, default=None,
                         help="""List of subjects to analyse in the bids folder""")
+
+    parser.add_argument('-h', '--hemis', metavar='str', nargs='1', type=str, default='r',
+                        help="""Hemisphere to load from BIDS dataset. Between l/r. Default = r""")
+
+    parser.add_argument('-fs', '--fs_shape', metavar='str', nargs='1', type=str, default='func',
+                        help="""Which freesurfer surface to load. Between func/shape/surf. Default = func""")
 
     data_source = parser.add_mutually_exclusive_group(required=True)  # require either a regular folder or bids folder
     data_source.add_argument('-s', '--surface', metavar='file', type=str,
@@ -107,7 +113,9 @@ def main():
             if args.bids_sub[0] not in layout.get_subjects():
                 parser.error("Unknown subject, not in BIDS structure")
             else:
-                f = layout.get(subject=args.bids_sub[0], extension='l.surf.gii')[0].path # carefull here, we might want the full brain
+	        f = layout.get(subject=args.bids_sub[0], 
+			       extension=args.hemis[0] + '.' + args.fs_shape[0] + '.gii')[0].path
+
                 nib_surf, vertices, faces = io.open_gifti_surf(f)
     else:
         nib_surf, vertices, faces = io.open_gifti_surf(args.surface[0])
