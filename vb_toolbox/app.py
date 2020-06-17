@@ -103,12 +103,12 @@ def main():
         if (args.bids_sub is None):  # if bids folder is provided but no subject, raise error
             parser.error("--bids requires --bids_sub")
         else:  # both bids and bids_sub
-            layout = BIDSLayout(args.bids[0])
+            layout = BIDSLayout(args.bids[0], derivatives=True) 
             if args.bids_sub[0] not in layout.get_subjects():
                 parser.error("Unknown subject, not in BIDS structure")
             else:
-                f = layout.get(subject=args.bids_sub[0], extension='gii.gz')[0]
-                nib_surf, vertices, faces = io.open_gifti_surf(f) # hoping this f contains the file. TODO
+                f = layout.get(subject=args.bids_sub[0], extension='l.surf.gii')[0].path # carefull here, we might want the full brain
+                nib_surf, vertices, faces = io.open_gifti_surf(f)
     else:
         nib_surf, vertices, faces = io.open_gifti_surf(args.surface[0])
             
