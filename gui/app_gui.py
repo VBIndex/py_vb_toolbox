@@ -30,17 +30,15 @@ class vp_toolbox_gui:
                 var.set(str(self.args[flag].default))
         self.pwd = os.path.dirname(__file__)
 
-        self.vb_cmd = tk.StringVar()
-        self.vb_cmd.set("")
+        self.display_cmd = tk.StringVar()
+        self.display_cmd.set("")
         self.view_folder = tk.StringVar()
         self.view_folder.set("None")
 
-
-
-        # frame info
+        # frame containing app info
         self.frame_info = tk.Frame(self.master, width=500)
         self.frame_info.grid(row=0, column=0)
-        img = Image.open("icon.png")
+        img = Image.open(os.path.join(self.pwd, "icon.png"))
         zoom = 0.4
         pixels_x, pixels_y = tuple([int(zoom * x) for x in img.size])
         self.icon = ImageTk.PhotoImage(img.resize((pixels_x, pixels_y)))
@@ -59,15 +57,14 @@ class vp_toolbox_gui:
 
         tk.Label(self.frame_info, text='\nReferences:').grid(sticky=tk.W, padx=20)
         refs_dict = {'Bajada et al. PsyArXiv, 2020': "https://psyarxiv.com/7vzbk/",
-                     'ref2': "http://www.google.com",
-                     'ref3': "http://www.google.com"}
+                     'ref2': "http://www.google.com"}
 
         for key, value in refs_dict.items():
             link = tk.Label(self.frame_info, anchor='w', text=key, fg="black", cursor="hand2")
             link.grid(sticky=tk.W, padx=20)
             link.bind("<Button-1>", lambda e: webbrowser.open_new(value))
 
-        # frame settings
+        # frame containing settings
         self.frame_run = tk.Frame(self.master)
         self.frame_run.grid(row=0, column=1)
 
@@ -80,7 +77,7 @@ class vp_toolbox_gui:
         tk.Label(self.frame_run, textvariable=self.var_dict['-d']).grid(row=2, column=2, sticky=tk.W)
         tk.Button(self.frame_run, text="?", command=lambda: self.show_help('-d')).grid(row=2, column=0)
 
-        tk.Button(self.frame_run, text="Set output name:", command=self.set_output_name).grid(row=3, column=1, sticky=tk.W)
+        tk.Button(self.frame_run, text="Change folder:", command=self.set_output_name).grid(row=3, column=1, sticky=tk.W)
         tk.Label(self.frame_run, textvariable=self.var_dict['-o']).grid(row=3, column=2, sticky=tk.W)
         tk.Button(self.frame_run, text="?", command=lambda: self.show_help('-o')).grid(row=3, column=0)
 
@@ -94,7 +91,7 @@ class vp_toolbox_gui:
         tk.Button(self.frame_run, text="?", command=lambda: self.show_help('-c')).grid(row=6, column=0)
 
         tk.Label(self.frame_run, text='Jobs:').grid(row=7, column=1, sticky=tk.W)
-        tk.Entry(self.frame_run, textvariable=self.var_dict['-j']).grid(row=7, column=2, sticky=tk.W)
+        tk.Entry(self.frame_run, width=15, textvariable=self.var_dict['-j']).grid(row=7, column=2, sticky=tk.W)
         tk.Button(self.frame_run, text="?", command=lambda: self.show_help('-j')).grid(row=7, column=0)
 
         tk.Label(self.frame_run, text='Full brain analysis:').grid(row=8, column=1, sticky=tk.W)
@@ -108,9 +105,9 @@ class vp_toolbox_gui:
         tk.Button(self.frame_run, anchor='n', text='--> Run vb_tool <--', pady=10, fg='red', command=self.run_analysis).grid(row=10, column=1, sticky=tk.N+tk.W)
 
         tk.Label(self.frame_run, text='Command:').grid(row=11, column=1, sticky=tk.W)
-        tk.Label(self.frame_run, width=20, anchor='w', justify=tk.LEFT, textvariable=self.vb_cmd, bg='white', fg='black').grid(row=12, column=1, sticky=tk.W)
+        tk.Label(self.frame_run, width=15, anchor='w', justify=tk.LEFT, textvariable=self.display_cmd, bg='white', fg='black').grid(row=12, column=1, sticky=tk.W)
 
-        # frame view
+        # frame for view options
         self.frame_view = tk.Frame(self.master)
         self.frame_view.grid(row=0, column=2, sticky=tk.W)
         tk.Label(self.frame_view, anchor='w', justify=tk.LEFT, text='VIEW RESULTS:').grid(sticky=tk.W)
@@ -130,7 +127,7 @@ class vp_toolbox_gui:
                     vb_cmd = f'{vb_cmd} {flag} {val}'
 
         print(vb_cmd)
-        self.vb_cmd.set(vb_cmd.replace(' -', '\n-'))
+        self.display_cmd.set(vb_cmd.replace(' -', '\n-'))
 
         terminal = subprocess.Popen(vb_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
         stdout, stderr = terminal.communicate()
@@ -139,17 +136,20 @@ class vp_toolbox_gui:
 
     def open_wb_view(self):
         surfs = glob.glob(self.view_folder.get() + '/*.inflated*')
-        outputs = glob.glob(self.view_folder.get() + '/*geig*')
+        search_str = self.var_dict['-n'].get() + '.vbi'
+        outputs = glob.glob(self.view_folder.get() + f'/*{search_str}*')
         wb_cmd = 'wb_view'
         for surf in surfs:
             wb_cmd = f'{wb_cmd} {surf}'
-
         for output in outputs:
             wb_cmd = f'{wb_cmd} {output}'
 
         wb_cmd = f'{wb_cmd} &'
         print(wb_cmd)
-        subprocess.Popen(wb_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+        try:
+            subprocess.Popen(wb_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+        except:
+            messagebox.showinfo("An error occured!", 'wb_view can not be started. For more information:\nhttps://www.humanconnectome.org/software/workbench-command')
 
     def fname_to_flag(self, flag):
         fname = filedialog.askopenfilename(initialdir=self.pwd, title="Select a File")
