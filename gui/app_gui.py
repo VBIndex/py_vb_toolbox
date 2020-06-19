@@ -14,11 +14,12 @@ import textwrap
 import tkinter as tk
 import webbrowser
 from PIL import Image, ImageTk
+from pkg_resources import get_distribution
 from tkinter import filedialog
 from tkinter import messagebox
 import tkinter.scrolledtext as scrolledtext
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../vb_toolbox')
-from app import create_parser
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/..')
+from vb_toolbox.app import create_parser
 
 # TODO: add comments
 # TODO: add to wishlist
@@ -32,7 +33,8 @@ from app import create_parser
 class vp_toolbox_gui:
     def __init__(self, master):
         self.master = master
-        master.title("VB Toolbox v.1.1.0")
+        version = get_distribution('vb_toolbox').version
+        master.title(f'VB Toolbox v.{version}')
 
         # get info about arguments from parser
         self.parser = create_parser()
