@@ -1,15 +1,26 @@
+import glob
+import subprocess
+import sys
+import os
 import tkinter as tk
 import webbrowser
-from tkinter import filedialog
-import os
-import sys
-import pandas as pd
-import subprocess
-from tkinter import messagebox
 from PIL import Image, ImageTk
-import glob
+from tkinter import filedialog
+from tkinter import messagebox
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../vb_toolbox')
 from app import create_parser
+
+# TODO: add comments
+# TODO: add to wishlist
+# TODO: pull request
+# TODO: header
+# TODO: authors
+# TODO: labels
+# TODO: surface in viewer
+# TODO: version from setup.py
+# TODO: help docstring to normal string
+# TODO: make video
+# TODO: pull from new version upgrade pip
 
 
 class vp_toolbox_gui:
@@ -136,7 +147,7 @@ class vp_toolbox_gui:
 
     def open_wb_view(self):
         surfs = glob.glob(self.view_folder.get() + '/*.inflated*')
-        search_str = self.var_dict['-n'].get() + '.vbi'
+        search_str = self.var_dict['-n'].get() + '.vb'
         outputs = glob.glob(self.view_folder.get() + f'/*{search_str}*')
         wb_cmd = 'wb_view'
         for surf in surfs:
@@ -177,7 +188,11 @@ class vp_toolbox_gui:
         messagebox.showinfo("Argument settings", self.args[flag].help)
 
 
-if __name__ == "__main__":
+def main():
     root = tk.Tk()
     vp_toolbox_gui(root)
     root.mainloop()
+
+
+if __name__ == "__main__":
+    main()
