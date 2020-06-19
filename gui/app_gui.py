@@ -47,8 +47,9 @@ class vp_toolbox_gui:
                 var.set(str(self.args[flag].default[0]))
             else:
                 var.set(str(self.args[flag].default))
-        self.pwd = os.path.dirname(__file__)
+        self.wd = os.path.dirname(__file__)
 
+        # Some Defaults
         self.display_cmd = tk.StringVar()
         self.display_cmd.set("")
         self.view_folder = tk.StringVar()
@@ -57,31 +58,25 @@ class vp_toolbox_gui:
         # frame containing app info
         self.frame_info = tk.Frame(self.master, width=500)
         self.frame_info.grid(row=0, column=0)
-        img = Image.open(os.path.join(self.pwd, "icon.png"))
-        zoom = 0.4
+        img = Image.open(os.path.join(self.wd, "icon.png"))
+        zoom = 0.3
         pixels_x, pixels_y = tuple([int(zoom * x) for x in img.size])
         self.icon = ImageTk.PhotoImage(img.resize((pixels_x, pixels_y)))
         self.label_icon = tk.Label(self.frame_info, image=self.icon)
         self.label_icon.image = self.icon
         self.label_icon.grid()
 
-        tk.Label(self.frame_info, justify=tk.LEFT, wraplength=300, text=self.parser.description).grid(sticky=tk.W, padx=20)
-        link_gh = tk.Label(self.frame_info, text='--> Link to GitHub\n', fg="black", cursor="hand2")
-        link_gh.grid(sticky=tk.W, padx=20)
-        link_gh.bind("<Button-1>", lambda e: webbrowser.open_new('https://github.com/VBIndex/py_vb_toolbox'))
-
-        authors = 'Authors:\nLucas da Costa  Campos (lqccampos@gmail.com)\nand Claude J Bajada (claude.bajada@um.edu.mt)'
-        tk.Label(self.frame_info, anchor='w', justify=tk.LEFT, text=authors).grid(sticky=tk.W, padx=20)
-        #tk.Label(self.frame_info, text=self.parser.epilog.replace("|n", "\n")).grid()
-
-        tk.Label(self.frame_info, text='\nReferences:').grid(sticky=tk.W, padx=20)
-        refs_dict = {'Bajada et al. PsyArXiv, 2020': "https://psyarxiv.com/7vzbk/",
-                     'ref2': "http://www.google.com"}
-
+        tk.Label(self.frame_info, justify=tk.LEFT, wraplength=300, text='Calculate the Vogt-Bailey index of a dataset.').grid(sticky=tk.W, padx=20)
+        refs_dict = {'-> Bajada et al. PsyArXiv, 2020': "https://psyarxiv.com/7vzbk/"}
         for key, value in refs_dict.items():
             link = tk.Label(self.frame_info, anchor='w', text=key, fg="black", cursor="hand2")
             link.grid(sticky=tk.W, padx=20)
             link.bind("<Button-1>", lambda e: webbrowser.open_new(value))
+        tk.Button(self.frame_info, text='About ...', command=self.show_about).grid(sticky=tk.W, padx=20)
+        tk.Button(self.frame_info, text='GitHub ...', command=lambda: webbrowser.open_new('https://github.com/VBIndex/py_vb_toolbox')).grid(sticky=tk.W, padx=20)
+
+
+
 
         # frame containing settings
         self.frame_run = tk.Frame(self.master)
@@ -171,12 +166,12 @@ class vp_toolbox_gui:
             messagebox.showinfo("An error occured!", 'wb_view can not be started. For more information:\nhttps://www.humanconnectome.org/software/workbench-command')
 
     def fname_to_flag(self, flag):
-        fname = filedialog.askopenfilename(initialdir=self.pwd, title="Select a File")
+        fname = filedialog.askopenfilename(initialdir=self.wd, title="Select a File")
         if fname:
             self.var_dict[flag].set(fname)
 
     def set_output_name(self):
-        fname = filedialog.asksaveasfilename(initialdir=self.pwd, title="Set an output name")
+        fname = filedialog.asksaveasfilename(initialdir=self.wd, title="Set an output name")
         if fname:
             self.var_dict['-o'].set(fname)
             self.view_folder.set(fname)
@@ -188,13 +183,18 @@ class vp_toolbox_gui:
             self.var_dict['-fb'].set('Yes')
 
     def set_view_folder(self):
-        fname = filedialog.askdirectory(initialdir=self.pwd, title="Select a Folder")
+        fname = filedialog.askdirectory(initialdir=self.wd, title="Select a Folder")
         if fname:
             self.view_folder.set(fname)
 
     def show_help(self, flag):
         help_msg = textwrap.shorten(self.args[flag].help, width=200)
         messagebox.showinfo("Argument settings", help_msg)
+
+    def show_about(self):
+        about_msg = textwrap.shorten(textwrap.dedent(self.parser.epilog), width=1000, drop_whitespace=False).replace('|n', '\n\n')
+        messagebox.showinfo("About vb_tool", about_msg)
+
 
 
 def main():
