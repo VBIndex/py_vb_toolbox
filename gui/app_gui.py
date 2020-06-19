@@ -10,6 +10,7 @@ import glob
 import subprocess
 import sys
 import os
+import textwrap
 import tkinter as tk
 import webbrowser
 from PIL import Image, ImageTk
@@ -21,14 +22,13 @@ from app import create_parser
 # TODO: add comments
 # TODO: add to wishlist
 # TODO: pull request
-# TODO: header
 # TODO: authors
 # TODO: labels
 # TODO: surface in viewer
 # TODO: version from setup.py
-# TODO: help docstring to normal string
 # TODO: make video
 # TODO: pull from new version upgrade pip
+# TODO: helpbox to tooltip
 
 
 class vp_toolbox_gui:
@@ -193,7 +193,8 @@ class vp_toolbox_gui:
             self.view_folder.set(fname)
 
     def show_help(self, flag):
-        messagebox.showinfo("Argument settings", self.args[flag].help)
+        help_msg = textwrap.shorten(self.args[flag].help, width=200)
+        messagebox.showinfo("Argument settings", help_msg)
 
 
 def main():
