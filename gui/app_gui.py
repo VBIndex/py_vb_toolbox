@@ -162,6 +162,7 @@ class VPToolboxGui:
         stdout, stderr = terminal.communicate()
         # if error is thrown, display it in messagebox
         if terminal.returncode != 0:
+            print(stderr)
             messagebox.showinfo("An error occured!", stderr)
 
     # what happens when View button is pressed
@@ -198,7 +199,7 @@ class VPToolboxGui:
         fname = filedialog.asksaveasfilename(initialdir=self.wd, title="Set an output name")
         if fname:
             self.var_dict['-o'].set(fname)
-            self.view_folder.set(fname)
+            self.view_folder.set(os.path.dirname(fname))
 
     def toggle_fb(self):
         if self.var_dict['-fb'].get() == 'Yes':
