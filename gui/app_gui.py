@@ -23,7 +23,6 @@ from app import create_parser
 # TODO: add comments
 # TODO: add to wishlist
 # TODO: pull request
-# TODO: labels
 # TODO: surface in viewer
 # TODO: make video
 # TODO: pull from new version upgrade pip
@@ -184,12 +183,12 @@ class vp_toolbox_gui:
 
     def show_help(self, flag):
         help_msg = textwrap.shorten(self.args[flag].help, width=200)
+        help_msg = ', '.join(self.args[flag].option_strings) + ' :\n' + help_msg
         messagebox.showinfo("Argument settings", help_msg)
 
     def show_about(self):
         about_msg = textwrap.shorten(textwrap.dedent(self.parser.epilog), width=1000, drop_whitespace=False).replace('|n', '\n\n')
         messagebox.showinfo("About vb_tool", about_msg)
-
 
 
 def main():
