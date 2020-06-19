@@ -30,7 +30,7 @@ from vb_toolbox.app import create_parser
 # TODO: helpbox to tooltip
 
 
-class vp_toolbox_gui:
+class VPToolboxGui:
     def __init__(self, master):
         self.master = master
         version = get_distribution('vb_toolbox').version
@@ -54,6 +54,8 @@ class vp_toolbox_gui:
         self.display_cmd.set("")
         self.view_folder = tk.StringVar()
         self.view_folder.set("None")
+        self.view_surf = tk.StringVar()
+        self.view_surf.set("None")
 
         # frame containing app info
         self.frame_info = tk.Frame(self.master, width=500)
@@ -79,41 +81,42 @@ class vp_toolbox_gui:
         self.frame_run = tk.Frame(self.master, pady=10)
         self.frame_run.grid(row=0, column=1)
 
+        bw = 15
         tk.Label(self.frame_run, anchor='w', justify=tk.LEFT, text='SETTINGS:\n\nRequired arguments:').grid(row=0, column=1, sticky=tk.W)
-        tk.Button(self.frame_run, text="Set surface file:", command=lambda: self.fname_to_flag('-s')).grid(row=1, column=1, sticky=tk.W)
+        tk.Button(self.frame_run, text="Set surface file:", width=bw, command=lambda: self.fname_to_flag('-s')).grid(row=1, column=1, sticky=tk.W)
         tk.Entry(self.frame_run, textvariable=self.var_dict['-s']).grid(row=1, column=2, sticky=tk.W)
         tk.Button(self.frame_run, text="?", command=lambda: self.show_help('-s')).grid(row=1, column=0)
 
-        tk.Button(self.frame_run, text="Set data file:", command=lambda: self.fname_to_flag('-d')).grid(row=2, column=1, sticky=tk.W)
+        tk.Button(self.frame_run, text="Set data file:", width=bw, command=lambda: self.fname_to_flag('-d')).grid(row=2, column=1, sticky=tk.W)
         tk.Entry(self.frame_run, textvariable=self.var_dict['-d']).grid(row=2, column=2, sticky=tk.W)
         tk.Button(self.frame_run, text="?", command=lambda: self.show_help('-d')).grid(row=2, column=0)
 
-        tk.Button(self.frame_run, text="Output name:", command=self.set_output_name).grid(row=3, column=1, sticky=tk.W)
+        tk.Button(self.frame_run, text="Output name:", width=bw, command=self.set_output_name).grid(row=3, column=1, sticky=tk.W)
         tk.Entry(self.frame_run, textvariable=self.var_dict['-o']).grid(row=3, column=2, sticky=tk.W)
         tk.Button(self.frame_run, text="?", command=lambda: self.show_help('-o')).grid(row=3, column=0)
 
         tk.Label(self.frame_run, text='\nOptional arguments:').grid(row=4, column=1, sticky=tk.W)
-        tk.Button(self.frame_run, text="Set mask file:", command=lambda: self.fname_to_flag('-m')).grid(row=5, column=1, sticky=tk.W)
+        tk.Button(self.frame_run, text="Set mask file:", width=bw, command=lambda: self.fname_to_flag('-m')).grid(row=5, column=1, sticky=tk.W)
         tk.Entry(self.frame_run, textvariable=self.var_dict['-m']).grid(row=5, column=2, sticky=tk.W)
         tk.Button(self.frame_run, text="?", command=lambda: self.show_help('-m')).grid(row=5, column=0)
 
-        tk.Button(self.frame_run, text="Set cluster file:", command=lambda: self.fname_to_flag('-c')).grid(row=6, column=1, sticky=tk.W)
+        tk.Button(self.frame_run, text="Set cluster file:", width=bw, command=lambda: self.fname_to_flag('-c')).grid(row=6, column=1, sticky=tk.W)
         tk.Entry(self.frame_run, textvariable=self.var_dict['-c']).grid(row=6, column=2, sticky=tk.W)
         tk.Button(self.frame_run, text="?", command=lambda: self.show_help('-c')).grid(row=6, column=0)
 
-        tk.Label(self.frame_run, text='Jobs:').grid(row=7, column=1, sticky=tk.W)
+        tk.Label(self.frame_run, text='Jobs:', width=bw, anchor='e').grid(row=7, column=1, sticky=tk.W)
         tk.Entry(self.frame_run, width=3, textvariable=self.var_dict['-j']).grid(row=7, column=2, sticky=tk.W)
         tk.Button(self.frame_run, text="?", command=lambda: self.show_help('-j')).grid(row=7, column=0)
 
-        tk.Label(self.frame_run, text='Full brain analysis:').grid(row=8, column=1, sticky=tk.W)
+        tk.Label(self.frame_run, text='Full brain analysis:', width=bw, anchor='e').grid(row=8, column=1, sticky=tk.W)
         tk.Button(self.frame_run, textvariable=self.var_dict['-fb'], command=self.toggle_fb).grid(row=8, column=2, sticky=tk.W)
         tk.Button(self.frame_run, text="?", command=lambda: self.show_help('-fb')).grid(row=8, column=0)
 
-        tk.Label(self.frame_run, text='Normalization:').grid(row=9, column=1, sticky=tk.W)
+        tk.Label(self.frame_run, text='Normalization:', width=bw, anchor='e').grid(row=9, column=1, sticky=tk.W)
         tk.OptionMenu(self.frame_run, self.var_dict['-n'], "geig", "unnorm", "rw", "sym").grid(row=9, column=2, sticky=tk.W)
         tk.Button(self.frame_run, text="?", command=lambda: self.show_help('-n')).grid(row=9, column=0)
 
-        tk.Button(self.frame_run, anchor='n', text='--> Run vb_tool <--', pady=10, fg='red', command=self.run_analysis).grid(row=10, column=1, sticky=tk.N+tk.W)
+        tk.Button(self.frame_run, text='--> Run vb_tool', width=bw, pady=10, fg='red', command=self.run_analysis).grid(row=10, column=1, sticky=tk.N+tk.W)
 
         tk.Label(self.frame_run, text='Command:').grid(row=11, column=1, sticky=tk.W)
         self.cmd_display = scrolledtext.ScrolledText(self.frame_run, height=3, width=20)
@@ -122,10 +125,12 @@ class vp_toolbox_gui:
         # frame for view options
         self.frame_view = tk.Frame(self.master)
         self.frame_view.grid(row=0, column=2, sticky=tk.W)
-        tk.Label(self.frame_view, anchor='w', justify=tk.LEFT, text='VIEW RESULTS:').grid(sticky=tk.W)
-        tk.Button(self.frame_view, text='Set output folder:', command=self.set_view_folder).grid(sticky=tk.W)
-        tk.Label(self.frame_view, anchor='w', justify=tk.LEFT, textvariable=self.view_folder).grid(sticky=tk.W)
-        tk.Button(self.frame_view, text='Open wb_view', command=self.open_wb_view).grid(sticky=tk.W)
+        tk.Label(self.frame_view, anchor='w', justify=tk.LEFT, text='VIEW RESULTS:').grid(row=0, column=0, sticky=tk.W)
+        tk.Button(self.frame_view, text='Change surface:', width=bw, command=self.set_view_surf).grid(row=1, column=0, sticky=tk.W)
+        tk.Entry(self.frame_view, textvariable=self.view_surf).grid(row=1, column=1, sticky=tk.W)
+        tk.Button(self.frame_view, text='Change data folder:', width=bw, command=self.set_view_folder).grid(row=2, column=0, sticky=tk.W)
+        tk.Entry(self.frame_view, textvariable=self.view_folder).grid(row=2, column=1, sticky=tk.W)
+        tk.Button(self.frame_view, text='Open wb_view', command=self.open_wb_view).grid(row=3, column=1,sticky=tk.W)
 
     def run_analysis(self):
         exclude_list = ['None', 'False', '==SUPPRESS==']
@@ -145,12 +150,12 @@ class vp_toolbox_gui:
             messagebox.showinfo("An error occured!", stderr)
 
     def open_wb_view(self):
-        surfs = glob.glob(self.view_folder.get() + '/*.inflated*')
-        search_str = self.var_dict['-n'].get() + '.vb'
-        outputs = glob.glob(self.view_folder.get() + f'/*{search_str}*')
+        my_surf = self.view_surf.get()
+        hemi = 'L' if 'L' in my_surf else 'R'
+        search_str = self.var_dict['-n'].get()
+        outputs = glob.glob(self.view_folder.get() + f'/*{hemi}*{search_str}*')
         wb_cmd = 'wb_view'
-        for surf in surfs:
-            wb_cmd = f'{wb_cmd} {surf}'
+        wb_cmd = f'{wb_cmd} {my_surf}'
         for output in outputs:
             wb_cmd = f'{wb_cmd} {output}'
 
@@ -165,6 +170,8 @@ class vp_toolbox_gui:
         fname = filedialog.askopenfilename(initialdir=self.wd, title="Select a File")
         if fname:
             self.var_dict[flag].set(fname)
+            if flag == '-s':
+                self.view_surf.set(fname)
 
     def set_output_name(self):
         fname = filedialog.asksaveasfilename(initialdir=self.wd, title="Set an output name")
@@ -177,6 +184,11 @@ class vp_toolbox_gui:
             self.var_dict['-fb'].set('No')
         else:
             self.var_dict['-fb'].set('Yes')
+
+    def set_view_surf(self):
+        fname = filedialog.askopenfilename(initialdir=self.wd, title="Select a File")
+        if fname:
+            self.view_surf.set(fname)
 
     def set_view_folder(self):
         fname = filedialog.askdirectory(initialdir=self.wd, title="Select a Folder")
@@ -195,7 +207,7 @@ class vp_toolbox_gui:
 
 def main():
     root = tk.Tk()
-    vp_toolbox_gui(root)
+    VPToolboxGui(root)
     root.mainloop()
 
 
