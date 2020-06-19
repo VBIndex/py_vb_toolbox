@@ -1,3 +1,11 @@
+#! /usr/bin/env python
+# -*- coding: utf-8 -*-
+# vim:fenc=utf-8
+#
+# Copyright © 2020 Nicole Eichert <n.eichert@googlemail.com>
+#
+# Distributed under terms of the GNU license.
+
 import glob
 import subprocess
 import sys
