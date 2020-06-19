@@ -20,20 +20,12 @@ import tkinter.scrolledtext as scrolledtext
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/..')
 from vb_toolbox.app import create_parser
 
-# TODO: add comments
-# TODO: add to wishlist
-# TODO: pull request
-# TODO: surface in viewer
-# TODO: make video
-# TODO: pull from new version upgrade pip
-# TODO: helpbox to tooltip
-
 
 class VPToolboxGui:
     def __init__(self, master):
         self.master = master
         # TODO: get version info from package info
-        version = '1.1.0'
+        version = '1.1.1'
         master.title(f'VB Toolbox v.{version}')
 
         # get info about arguments from parser object in app
@@ -134,7 +126,7 @@ class VPToolboxGui:
 
         # command display
         tk.Label(self.frame_run, text='Command:').grid(row=11, column=1, sticky=tk.W)
-        self.cmd_display = scrolledtext.ScrolledText(self.frame_run, height=3, width=50)
+        self.cmd_display = scrolledtext.ScrolledText(self.frame_run, height=5, width=50)
         self.cmd_display.grid(row=12, column=1, columnspan=2, sticky=tk.W)
 
         # construct frame for viewing options (use info from -s and -o as defaults)
@@ -160,7 +152,10 @@ class VPToolboxGui:
                 else:
                     vb_cmd = f'{vb_cmd} {flag} {val}'
         print(vb_cmd)
+
         # display command in text field
+        # TODO: why is command only updated when suprocess is finished?
+        self.cmd_display.delete('1.0', tk.END)
         self.cmd_display.insert(tk.END, vb_cmd.replace(' -', '\n-'))
         # call command from terminal
         terminal = subprocess.Popen(vb_cmd, stderr=subprocess.PIPE, shell=True)
