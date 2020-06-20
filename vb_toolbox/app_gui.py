@@ -58,7 +58,7 @@ class VPToolboxGui:
         self.frame_info = tk.Frame(self.master, width=500)
         self.frame_info.grid(row=0, column=0)
         # place icon in frame
-        img = Image.open(os.path.join(self.sd, "../assets/icon.png"))
+        img = Image.open(os.path.join(self.sd, "assets/vb_gui_icon.png"))
         zoom = 0.3
         pixels_x, pixels_y = tuple([int(zoom * x) for x in img.size])
         self.icon = ImageTk.PhotoImage(img.resize((pixels_x, pixels_y)))

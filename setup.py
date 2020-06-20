@@ -12,8 +12,9 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/VBIndex/py_vb_toolbox",
-    packages=setuptools.find_packages(),
     include_package_data=True,
+    packages=["vb_toolbox"],
+    package_data={"vb_toolbox": ["vb_gui_icon.png"]},
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
@@ -37,4 +38,3 @@ setuptools.setup(
         ]
     }
 )
-
