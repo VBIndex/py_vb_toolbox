@@ -72,13 +72,13 @@ def vb_index_internal_loop(i0, iN, surf_faces, data, norm, print_progress=False)
             affinity = m.create_affinity_matrix(neighborhood)
             _, _, _, eigenvalues, _ = m.spectral_reorder(affinity, norm)
             normalisation_factor = np.average(eigenvalues[1:])
- 
+
             # return [0]
             # Store the result of this run
             loc_result[idx] = eigenvalues[1]/normalisation_factor
 
         except:
-            loc_result[idx] = nan  
+            loc_result[idx] = nan
 
         if print_progress:
 
