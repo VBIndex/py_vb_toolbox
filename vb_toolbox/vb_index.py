@@ -78,7 +78,7 @@ def vb_index_internal_loop(i0, iN, surf_faces, data, norm, print_progress=False)
             loc_result[idx] = eigenvalues[1]/normalisation_factor
 
         except:
-            loc_result[idx] = nan
+            loc_result[idx] = np.nan
 
         if print_progress:
 
