@@ -11,13 +11,15 @@ import subprocess
 import sys
 import os
 import textwrap
-import tkinter as tk
 import webbrowser
+
 from PIL import Image, ImageTk
+
+import tkinter as tk
 from tkinter import filedialog
 from tkinter import messagebox
 import tkinter.scrolledtext as scrolledtext
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/..')
+
 from vb_toolbox.app import create_parser
 
 
@@ -56,7 +58,7 @@ class VPToolboxGui:
         self.frame_info = tk.Frame(self.master, width=500)
         self.frame_info.grid(row=0, column=0)
         # place icon in frame
-        img = Image.open(os.path.join(self.sd, "icon.png"))
+        img = Image.open(os.path.join(self.sd, "../assets/icon.png"))
         zoom = 0.3
         pixels_x, pixels_y = tuple([int(zoom * x) for x in img.size])
         self.icon = ImageTk.PhotoImage(img.resize((pixels_x, pixels_y)))
@@ -72,8 +74,8 @@ class VPToolboxGui:
             link = tk.Label(self.frame_info, anchor='w', text=key, fg="black", cursor="hand2")
             link.grid(sticky=tk.W, padx=20)
             link.bind("<Button-1>", lambda e: webbrowser.open_new(value))
-        tk.Button(self.frame_info, text='About ...', width=10, command=self.show_about).grid(sticky=tk.W, padx=20)
-        tk.Button(self.frame_info, text='GitHub ...', width=10, command=lambda: webbrowser.open_new('https://github.com/VBIndex/py_vb_toolbox')).grid(sticky=tk.W, padx=20)
+        tk.Button(self.frame_info, text='About', width=10, command=self.show_about).grid(sticky=tk.W, padx=20)
+        tk.Button(self.frame_info, text='GitHub', width=10, command=lambda: webbrowser.open_new('https://github.com/VBIndex/py_vb_toolbox')).grid(sticky=tk.W, padx=20)
 
         # construct frame containing settings
         self.frame_run = tk.Frame(self.master, pady=10)
