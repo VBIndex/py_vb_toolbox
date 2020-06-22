@@ -17,7 +17,7 @@ multiprocess
 nibabel
 numpy
 scipy
-image
+pillow
 ```
 
 The preferred way to install is through pip. It is as easy as
