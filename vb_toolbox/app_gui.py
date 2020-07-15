@@ -23,6 +23,10 @@ import tkinter.scrolledtext as scrolledtext
 from vb_toolbox.app import create_parser
 
 import pkg_resources
+import time
+import threading
+import queue
+
 
 class VPToolboxGui:
     def __init__(self, master):
@@ -64,7 +68,13 @@ class VPToolboxGui:
         # Set the analysis type
         self.analysis = tk.StringVar()
         self.analysis.set('Searchlight')
+        self.var_dict['-c'].set('None')
+        self.var_dict['-m'].set('')
         self.var_dict['-fb'].set('False')
+
+        # Set the run button string
+        self.run_button_text = tk.StringVar()
+        self.run_button_text.set('Run vb_tool')
 
         # Initialize some defaults
         self.display_cmd = tk.StringVar()
@@ -217,7 +227,7 @@ class VPToolboxGui:
         self.command_label.grid(row=11, column=0, columnspan=3, padx=self.outer_padding, pady=(self.outer_padding, self.inner_padding), sticky=tk.W+tk.E)
 
         # Run button
-        self.run_button = tk.Button(self.frame_run, text='Run vb_tool', pady=self.outer_padding/2, fg='red', command=self.run_analysis)
+        self.run_button = tk.Button(self.frame_run, textvariable=self.run_button_text, pady=self.outer_padding/2, fg='red', command=self.run_analysis)
         self.run_button.config(font=('TkDefaultFont', 10, 'bold'))
         self.run_button.grid(row=13, column=1, columnspan=2, sticky=tk.W+tk.E, padx=(self.inner_padding, self.outer_padding), pady=self.outer_padding/2)
 
@@ -279,16 +289,60 @@ class VPToolboxGui:
 
         print(vb_cmd)
 
-        # Call command from terminal
-        terminal = subprocess.Popen(vb_cmd, stderr=subprocess.PIPE, shell=True)
-        stdout, stderr = terminal.communicate()
+        # Change the button text/colour while running
+        self.run_button_text.set('Running...')
+        self.run_button.config(fg='blue')
 
-        # If error is thrown, display it in messagebox
-        if terminal.returncode != 0:
-            print(stderr)
-            messagebox.showinfo('An error occurred!', stderr)
-        else:
-            messagebox.showinfo('Done', 'The process has finished!')
+        # Run the command in a subprocess
+        self.process = subprocess.Popen(vb_cmd, stderr=subprocess.PIPE, shell=True)
+
+        # Read any stderr output from the process using a thread and store them in a queue
+        self.q = queue.Queue(maxsize = 1024)
+        t = threading.Thread(target=self.reader_thread, args=[self.q])
+        t.daemon = True
+        t.start()
+
+        # Update the GUI
+        self.update(self.q)
+
+    # Source: https://stackoverflow.com/questions/50449082/tkinter-updating-gui-from-subprocess-output-in-realtime
+    # Read the outputs from the process
+    def reader_thread(self, q):
+        try:
+            with self.process.stderr as pipe:
+                for line in iter(pipe.read, b''):
+                    q.put(line)
+        finally:
+            q.put(None)
+
+    # Update the GUI depending on the state of the process and the stderr output
+    def update(self, q):
+        for line in self.iter_except(q.get_nowait, queue.Empty):
+            if line is None:
+                if self.process.poll() is not None:
+                    self.run_button_text.set('Run vb_tool')
+                    self.run_button.config(fg='red')
+                    messagebox.showinfo('Done', 'The process has finished!')
+                else:
+                    break
+            else:
+                if self.process.poll() is not None:
+                    if self.process.returncode != 0:
+                        self.run_button_text.set('Run vb_tool')
+                        self.run_button.config(fg='red')
+                        messagebox.showinfo('An error occurred!', line)
+                    return
+                else:
+                    break
+        self.master.after(10, self.update, q)
+
+    # Helper function to iterate through the queue
+    def iter_except(self, function, exception):
+        try:
+            while True:
+                yield function()
+        except exception:
+            return
 
     # View button logic
     def open_wb_view(self):
@@ -405,6 +459,7 @@ class VPToolboxGui:
         if self.analysis.get() == 'Clustered':
             self.show_cluster_file_input()
             self.remove_mask_file_input()
+            self.var_dict['-c'].set('')
             self.var_dict['-m'].set('None')
             self.var_dict['-fb'].set('False')
 
@@ -412,12 +467,14 @@ class VPToolboxGui:
             self.show_mask_file_input()
             self.remove_cluster_file_input()
             self.var_dict['-c'].set('None')
+            self.var_dict['-m'].set('')
             self.var_dict['-fb'].set('True')
 
         elif self.analysis.get() == 'Searchlight':
             self.show_mask_file_input()
             self.remove_cluster_file_input()
             self.var_dict['-c'].set('None')
+            self.var_dict['-m'].set('')
             self.var_dict['-fb'].set('False')
 
         self.update_command()
