@@ -1,0 +1,27 @@
+{
+  "files": [
+    "README.md"
+  ],
+  "imageSize": 100,
+  "commit": false,
+  "contributors": [
+    {
+      "login": "LucasCampos",
+      "name": "Lucas Campos",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/2735358?v=4",
+      "profile": "https://github.com/LucasCampos",
+      "contributions": [
+        "code",
+        "bug",
+        "ideas",
+        "maintenance"
+      ]
+    }
+  ],
+  "contributorsPerLine": 7,
+  "projectName": "py_vb_toolbox",
+  "projectOwner": "VBIndex",
+  "repoType": "github",
+  "repoHost": "https://github.com",
+  "skipCi": true
+}
