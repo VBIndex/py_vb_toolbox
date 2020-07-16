@@ -22,6 +22,17 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "claudebajada",
+      "name": "claudebajada",
+      "avatar_url": "https://avatars3.githubusercontent.com/u/16142659?v=4",
+      "profile": "http://claude.bajada.info",
+      "contributions": [
+        "bug",
+        "ideas",
+        "projectManagement"
+      ]
     }
   ],
   "contributorsPerLine": 7,
