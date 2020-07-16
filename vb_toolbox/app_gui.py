@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # vim:fenc=utf-8
 #
-# Copyright © 2020 Nicole Eichert <n.eichert@googlemail.com>
+# Copyright © 2020 Nicole Eichert <n.eichert@googlemail.com>, Keith George Ciantar <keithgeorge98@gmail.com>
 #
 # Distributed under terms of the GNU license.
 
@@ -23,10 +23,8 @@ import tkinter.scrolledtext as scrolledtext
 from vb_toolbox.app import create_parser
 
 import pkg_resources
-import time
 import threading
 import queue
-
 
 class VPToolboxGui:
     def __init__(self, master):
@@ -454,7 +452,9 @@ class VPToolboxGui:
         self.clst_file_entry.grid_remove()
         self.clst_file_qst_btn.grid_remove()
 
-    # Choose between 3 types of analysis and the choose between mask/cluster
+    # Choose between 3 types of analysis
+    # and show either the mask file option or the cluster file option
+    # Set the flags according to the chosen option
     def analysis_type(self, value):
         if self.analysis.get() == 'Clustered':
             self.show_cluster_file_input()
