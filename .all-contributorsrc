@@ -1,0 +1,25 @@
+{
+  "files": [
+    "README.md"
+  ],
+  "imageSize": 100,
+  "commit": false,
+  "contributors": [
+    {
+      "login": "claudebajada",
+      "name": "claudebajada",
+      "avatar_url": "https://avatars3.githubusercontent.com/u/16142659?v=4",
+      "profile": "http://claude.bajada.info",
+      "contributions": [
+        "bug",
+        "ideas"
+      ]
+    }
+  ],
+  "contributorsPerLine": 7,
+  "projectName": "py_vb_toolbox",
+  "projectOwner": "VBIndex",
+  "repoType": "github",
+  "repoHost": "https://github.com",
+  "skipCi": true
+}
