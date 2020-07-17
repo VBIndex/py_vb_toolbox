@@ -34,7 +34,7 @@ class VPToolboxGui:
 
         # Get the version number from the installed vb_toolbox
         version = pkg_resources.require('vb_toolbox')[0].version
-        master.title(f'VB Toolbox v{version}')
+        self.master.title(f'VB Toolbox v{version}')
 
         # Set the weight of the rows and columns
         self.master.grid_rowconfigure(0, weight=1)
@@ -93,12 +93,18 @@ class VPToolboxGui:
         self.outer_padding = 10
         self.inner_padding = 3
 
+        # Set the wraplength for the headers
+        self.wrap_length = 400
+
+        if self.master.winfo_screenwidth() > 1920:
+            self.wrap_length = 550
+
         # Construct frame containing app info
         self.frame_info = tk.Frame(self.master, padx=self.outer_padding, pady=self.outer_padding, bg=info_colour)
         self.frame_info.grid(row=0, column=0, sticky='news')
 
         # Set a title with the name of the app
-        self.info_title = tk.Label(self.frame_info, justify=tk.CENTER, wraplength=450, text='Vogt-Bailey Toolbox', bg=info_colour)
+        self.info_title = tk.Label(self.frame_info, justify=tk.CENTER, wraplength=self.wrap_length, text='Vogt-Bailey Toolbox', bg=info_colour)
         self.info_title.config(font=('Roboto', 40))
         self.info_title.grid(sticky=tk.W+tk.E+tk.E, padx=self.outer_padding, pady=self.outer_padding)
 
@@ -113,13 +119,13 @@ class VPToolboxGui:
         self.label_icon.grid()
 
         # Application info
-        tk.Label(self.frame_info, justify=tk.LEFT, wraplength=450, text='Calculate the Vogt-Bailey (VB) index of a dataset by choosing from the three main analysis types.', bg=info_colour).grid(sticky=tk.W+tk.E, padx=self.outer_padding, pady=self.outer_padding/2)
+        tk.Label(self.frame_info, justify=tk.LEFT, wraplength=self.wrap_length, text='Calculate the Vogt-Bailey (VB) index of a dataset by choosing from the three main analysis types.', bg=info_colour).grid(sticky=tk.W+tk.E, padx=self.outer_padding, pady=self.outer_padding/2)
 
         # TODO: add more references to dictionary
         refs_dict = {'Bajada et al. (2020), NeuroImage\nDOI: 10.1016/j.neuroimage.2020.117140': 'https://doi.org/10.1016/j.neuroimage.2020.117140'}
 
         for key, value in refs_dict.items():
-            link = tk.Label(self.frame_info, justify=tk.LEFT,  wraplength=450, text=key, fg='black', cursor='hand2', bg=info_colour)
+            link = tk.Label(self.frame_info, justify=tk.LEFT,  wraplength=self.wrap_length, text=key, fg='black', cursor='hand2', bg=info_colour)
             link.grid(sticky=tk.W, padx=self.outer_padding, pady=self.outer_padding/2)
             link.bind('<Button-1>', lambda e: webbrowser.open_new(value))
 
@@ -144,12 +150,12 @@ class VPToolboxGui:
         bw = 15
 
         # Settings header
-        self.settings_label = tk.Label(self.frame_run, justify=tk.CENTER, wraplength=300, text='Settings', bg=settings_colour)
+        self.settings_label = tk.Label(self.frame_run, justify=tk.CENTER, wraplength=self.wrap_length, text='Settings', bg=settings_colour)
         self.settings_label.config(font=('Roboto', 24))
         self.settings_label.grid(row=0, column=0, columnspan=3, padx=self.outer_padding, pady=self.outer_padding)
 
         # Required arguments sub-header
-        self.required_label = tk.Label(self.frame_run, justify=tk.CENTER, wraplength=300, text='Required arguments', bg=settings_colour)
+        self.required_label = tk.Label(self.frame_run, justify=tk.CENTER, wraplength=self.wrap_length, text='Required arguments', bg=settings_colour)
         self.required_label.config(font=('TkDefaultFont', 10, 'bold'))
         self.required_label.grid(row=1, column=0, columnspan=3, padx=self.outer_padding, pady=(0, self.inner_padding), sticky=tk.W+tk.E)
 
@@ -178,7 +184,7 @@ class VPToolboxGui:
         tk.Button(self.frame_run, text='?', command=lambda: self.show_help('-o')).grid(row=4, column=0, sticky=tk.W+tk.E, padx=(self.outer_padding, self.inner_padding), pady=self.inner_padding)
 
         # Optional arguments sub-header
-        self.optional_label = tk.Label(self.frame_run, justify=tk.CENTER, wraplength=300, text='Optional arguments', bg=settings_colour)
+        self.optional_label = tk.Label(self.frame_run, justify=tk.CENTER, wraplength=self.wrap_length, text='Optional arguments', bg=settings_colour)
         self.optional_label.config(font=('TkDefaultFont', 10, 'bold'))
         self.optional_label.grid(row=5, column=0, sticky=tk.W+tk.E, columnspan=3, padx=self.outer_padding, pady=(self.outer_padding, self.inner_padding))
 
@@ -220,7 +226,7 @@ class VPToolboxGui:
         tk.Button(self.frame_run, text='?', command=lambda: self.show_help('-n')).grid(row=10, column=0, sticky=tk.W+tk.E, padx=(self.outer_padding, self.inner_padding), pady=self.inner_padding)
 
         # Required arguments sub-header
-        self.command_label = tk.Label(self.frame_run, justify=tk.CENTER, wraplength=300, text='Command', bg=settings_colour)
+        self.command_label = tk.Label(self.frame_run, justify=tk.CENTER, wraplength=self.wrap_length, text='Command', bg=settings_colour)
         self.command_label.config(font=('TkDefaultFont', 10, 'bold'))
         self.command_label.grid(row=11, column=0, sticky=tk.W+tk.E, columnspan=3, padx=self.outer_padding, pady=(self.outer_padding, self.inner_padding))
 
@@ -234,12 +240,12 @@ class VPToolboxGui:
         self.frame_view.grid(row=0, column=2, sticky='news')
 
         # Visualisation header
-        self.results_label = tk.Label(self.frame_view, justify=tk.CENTER, wraplength=300, text='Visualisation', bg=results_colour)
+        self.results_label = tk.Label(self.frame_view, justify=tk.CENTER, wraplength=self.wrap_length, text='Visualisation', bg=results_colour)
         self.results_label.config(font=('Roboto', 24))
         self.results_label.grid(row=0, column=0, columnspan=3, padx=self.inner_padding, pady=self.outer_padding)
 
         # Results options
-        self.empty_label = tk.Label(self.frame_view, justify=tk.CENTER, wraplength=300, text='Results options', bg=results_colour)
+        self.empty_label = tk.Label(self.frame_view, justify=tk.CENTER, wraplength=self.wrap_length, text='Results options', bg=results_colour)
         self.empty_label.config(font=('TkDefaultFont', 10, 'bold'))
         self.empty_label.grid(row=1, column=0, columnspan=3, padx=self.outer_padding, pady=(0, self.inner_padding), sticky=tk.W+tk.E)
 
@@ -483,10 +489,11 @@ class VPToolboxGui:
 def main():
     root = tk.Tk()
     screen_width = root.winfo_screenwidth()
-    screen_height = root.winfo_screenheight()
 
-    if screen_width > 1920 and screen_height > 1080:
+    if screen_width > 1920 and screen_width <= 2560:
         root.tk.call('tk', 'scaling', 2.0)
+    elif screen_width > 2560:
+        root.tk.call('tk', 'scaling', 2.5)
 
     VPToolboxGui(root)
     root.mainloop()
