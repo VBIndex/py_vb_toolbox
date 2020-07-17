@@ -99,7 +99,7 @@ class VPToolboxGui:
 
         # Set a title with the name of the app
         self.info_title = tk.Label(self.frame_info, justify=tk.CENTER, wraplength=300, text='Vogt-Bailey Toolbox', bg=info_colour)
-        self.info_title.config(font=('Helvetica', 40))
+        self.info_title.config(font=('Roboto', 40))
         self.info_title.grid(sticky=tk.W+tk.E+tk.E, padx=self.outer_padding, pady=self.outer_padding)
 
         # Place icon in frame
@@ -113,14 +113,14 @@ class VPToolboxGui:
         self.label_icon.grid()
 
         # Application info
-        tk.Label(self.frame_info, justify=tk.LEFT, wraplength=410, text='Calculate the Vogt-Bailey (VB) index of a dataset by choosing from the three main analysis types.', bg=info_colour).grid(sticky=tk.W+tk.E, padx=self.outer_padding, pady=self.outer_padding/2)
+        tk.Label(self.frame_info, justify=tk.LEFT, wraplength=400, text='Calculate the Vogt-Bailey (VB) index of a dataset by choosing from the three main analysis types.', bg=info_colour).grid(sticky=tk.W+tk.E, padx=self.outer_padding, pady=self.outer_padding/2)
 
         # TODO: add more references to dictionary
-        refs_dict = {'Bajada et al. (2020), NeuroImage, DOI: 10.1016/j.neuroimage.2020.117140': 'https://doi.org/10.1016/j.neuroimage.2020.117140'}
+        refs_dict = {'Bajada et al. (2020), NeuroImage\nDOI: 10.1016/j.neuroimage.2020.117140': 'https://doi.org/10.1016/j.neuroimage.2020.117140'}
 
         for key, value in refs_dict.items():
-            link = tk.Label(self.frame_info, anchor='w', text=key, fg='black', cursor='hand2', bg=info_colour)
-            link.grid(sticky=tk.W+tk.E, padx=self.outer_padding, pady=self.outer_padding/2)
+            link = tk.Label(self.frame_info, justify=tk.LEFT,  wraplength=400, text=key, fg='black', cursor='hand2', bg=info_colour)
+            link.grid(sticky=tk.W, padx=self.outer_padding, pady=self.outer_padding/2)
             link.bind('<Button-1>', lambda e: webbrowser.open_new(value))
 
         # Quick start button
@@ -138,14 +138,14 @@ class VPToolboxGui:
 
         # Declare the command display so that it can be updated by the other variables
         self.cmd_display = scrolledtext.ScrolledText(self.frame_run, height=7, width=35)
-        self.cmd_display.grid(row=12, column=1, columnspan=2, sticky=tk.E, padx=(self.inner_padding, self.outer_padding), pady=self.inner_padding)
+        self.cmd_display.grid(row=12, column=1, columnspan=2, sticky=tk.W+tk.E, padx=(self.inner_padding, self.outer_padding), pady=self.inner_padding)
 
         # Set the box width
         bw = 15
 
         # Settings header
         self.settings_label = tk.Label(self.frame_run, justify=tk.CENTER, wraplength=300, text='Settings', bg=settings_colour)
-        self.settings_label.config(font=('Helvetica', 24))
+        self.settings_label.config(font=('Roboto', 24))
         self.settings_label.grid(row=0, column=0, columnspan=3, padx=self.outer_padding, pady=self.outer_padding)
 
         # Required arguments sub-header
@@ -235,7 +235,7 @@ class VPToolboxGui:
 
         # Visualisation header
         self.results_label = tk.Label(self.frame_view, justify=tk.CENTER, wraplength=300, text='Visualisation', bg=results_colour)
-        self.results_label.config(font=('Helvetica', 24))
+        self.results_label.config(font=('Roboto', 24))
         self.results_label.grid(row=0, column=0, columnspan=3, padx=self.inner_padding, pady=self.outer_padding)
 
         # Results options
