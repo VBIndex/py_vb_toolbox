@@ -25,12 +25,16 @@ from vb_toolbox.app import create_parser
 import pkg_resources
 import threading
 import queue
+import psutil
 
 class VPToolboxGui:
     def __init__(self, master):
         # Get the root tkinter object
         self.master = master
         self.master.resizable(width=False, height=False)
+
+        # Add callback to check for processes before closing the window
+        self.master.protocol("WM_DELETE_WINDOW", self.close_gui)
 
         # Get the version number from the installed vb_toolbox
         version = pkg_resources.require('vb_toolbox')[0].version
@@ -62,6 +66,9 @@ class VPToolboxGui:
 
         # Users working directory
         self.wd = os.getcwd()
+
+        # Set the process variable to None
+        self.process = None
 
         # Set the analysis type
         self.analysis = tk.StringVar()
@@ -144,7 +151,7 @@ class VPToolboxGui:
 
         # Declare the command display so that it can be updated by the other variables
         self.cmd_display = scrolledtext.ScrolledText(self.frame_run, height=7, width=35)
-        self.cmd_display.grid(row=12, column=0, columnspan=3, sticky=tk.W+tk.E, padx=self.outer_padding, pady=self.inner_padding)
+        self.cmd_display.grid(row=11, column=0, columnspan=3, sticky=tk.W+tk.E, padx=self.outer_padding, pady=(self.inner_padding, self.outer_padding/2))
 
         # Set the box width
         bw = 15
@@ -154,10 +161,10 @@ class VPToolboxGui:
         self.settings_label.config(font=('Roboto', 24))
         self.settings_label.grid(row=0, column=0, columnspan=3, padx=self.outer_padding, pady=self.outer_padding)
 
-        # Required arguments sub-header
-        self.required_label = tk.Label(self.frame_run, justify=tk.CENTER, wraplength=self.wrap_length, text='Required arguments', bg=settings_colour)
-        self.required_label.config(font=('TkDefaultFont', 10, 'bold'))
-        self.required_label.grid(row=1, column=0, columnspan=3, padx=self.outer_padding, pady=(0, self.inner_padding), sticky=tk.W+tk.E)
+        # Input arguments sub-header
+        self.input_label = tk.Label(self.frame_run, justify=tk.CENTER, wraplength=self.wrap_length, text='Input arguments', bg=settings_colour)
+        self.input_label.config(font=('TkDefaultFont', 10, 'bold'))
+        self.input_label.grid(row=1, column=0, columnspan=3, padx=self.outer_padding, pady=(0, self.inner_padding), sticky=tk.W+tk.E)
 
         # -s
         # Set the surface file
@@ -183,16 +190,11 @@ class VPToolboxGui:
         self.output_entry.grid(row=4, column=2, sticky=tk.W+tk.E, padx=(self.inner_padding, self.outer_padding), pady=self.inner_padding)
         tk.Button(self.frame_run, text='?', command=lambda: self.show_help('-o')).grid(row=4, column=0, sticky=tk.W+tk.E, padx=(self.outer_padding, self.inner_padding), pady=self.inner_padding)
 
-        # Optional arguments sub-header
-        self.optional_label = tk.Label(self.frame_run, justify=tk.CENTER, wraplength=self.wrap_length, text='Optional arguments', bg=settings_colour)
-        self.optional_label.config(font=('TkDefaultFont', 10, 'bold'))
-        self.optional_label.grid(row=5, column=0, sticky=tk.W+tk.E, columnspan=3, padx=self.outer_padding, pady=(self.outer_padding, self.inner_padding))
-
         # -fb
         # Analysis type
-        tk.Label(self.frame_run, text='Analysis type', width=bw, anchor='center').grid(row=6, column=1, sticky=tk.W+tk.E, padx=self.inner_padding, pady=self.inner_padding)
-        tk.OptionMenu(self.frame_run, self.analysis, 'Searchlight', 'Clustered', 'Full brain', command=self.analysis_type).grid(row=6, column=2, sticky=tk.W+tk.E+tk.E, padx=(self.inner_padding, self.outer_padding), pady=self.inner_padding)
-        tk.Button(self.frame_run, text='?', command=lambda: self.show_help('-fb')).grid(row=6, column=0, sticky=tk.W+tk.E, padx=(self.outer_padding, self.inner_padding), pady=self.inner_padding)
+        tk.Label(self.frame_run, text='Analysis type', width=bw, anchor='center').grid(row=5, column=1, sticky=tk.W+tk.E, padx=self.inner_padding, pady=self.inner_padding)
+        tk.OptionMenu(self.frame_run, self.analysis, 'Searchlight', 'Clustered', 'Full brain', command=self.analysis_type).grid(row=5, column=2, sticky=tk.W+tk.E+tk.E, padx=(self.inner_padding, self.outer_padding), pady=self.inner_padding)
+        tk.Button(self.frame_run, text='?', command=lambda: self.show_help('-fb')).grid(row=5, column=0, sticky=tk.W+tk.E, padx=(self.outer_padding, self.inner_padding), pady=self.inner_padding)
 
         # -m
         # Set the mask file
@@ -213,22 +215,27 @@ class VPToolboxGui:
 
         # -j
         # Set the number of parallel jobs
-        tk.Label(self.frame_run, text='Jobs', width=bw, anchor='center').grid(row=9, column=1, sticky=tk.W+tk.E, padx=self.inner_padding, pady=self.inner_padding)
+        tk.Label(self.frame_run, text='Jobs', width=bw, anchor='center').grid(row=8, column=1, sticky=tk.W+tk.E, padx=self.inner_padding, pady=self.inner_padding)
         self.jobs_entry = tk.Entry(self.frame_run, textvariable=self.var_dict['-j'])
         self.jobs_entry.bind('<KeyRelease>', self.update_on_key_release)
-        self.jobs_entry.grid(row=9, column=2, sticky=tk.W+tk.E, padx=(self.inner_padding, self.outer_padding), pady=self.inner_padding)
-        tk.Button(self.frame_run, text='?', command=lambda: self.show_help('-j')).grid(row=9, column=0, sticky=tk.W+tk.E, padx=(self.outer_padding, self.inner_padding), pady=self.inner_padding)
+        self.jobs_entry.grid(row=8, column=2, sticky=tk.W+tk.E, padx=(self.inner_padding, self.outer_padding), pady=self.inner_padding)
+        tk.Button(self.frame_run, text='?', command=lambda: self.show_help('-j')).grid(row=8, column=0, sticky=tk.W+tk.E, padx=(self.outer_padding, self.inner_padding), pady=self.inner_padding)
 
         # -n
         # Set the normalisation options
-        tk.Label(self.frame_run, text='Normalization', width=bw, anchor='center').grid(row=10, column=1, sticky=tk.W+tk.E, padx=self.inner_padding, pady=self.inner_padding)
-        tk.OptionMenu(self.frame_run, self.var_dict['-n'], 'geig', 'unnorm', 'rw', 'sym', command=self.update_on_choose).grid(row=10, column=2, sticky=tk.W+tk.E, padx=(self.inner_padding, self.outer_padding), pady=self.inner_padding)
-        tk.Button(self.frame_run, text='?', command=lambda: self.show_help('-n')).grid(row=10, column=0, sticky=tk.W+tk.E, padx=(self.outer_padding, self.inner_padding), pady=self.inner_padding)
+        tk.Label(self.frame_run, text='Normalization', width=bw, anchor='center').grid(row=9, column=1, sticky=tk.W+tk.E, padx=self.inner_padding, pady=self.inner_padding)
+        tk.OptionMenu(self.frame_run, self.var_dict['-n'], 'geig', 'unnorm', 'rw', 'sym', command=self.update_on_choose).grid(row=9, column=2, sticky=tk.W+tk.E, padx=(self.inner_padding, self.outer_padding), pady=self.inner_padding)
+        tk.Button(self.frame_run, text='?', command=lambda: self.show_help('-n')).grid(row=9, column=0, sticky=tk.W+tk.E, padx=(self.outer_padding, self.inner_padding), pady=self.inner_padding)
 
-        # Required arguments sub-header
+        # Command sub-header
         self.command_label = tk.Label(self.frame_run, justify=tk.CENTER, wraplength=self.wrap_length, text='Command', bg=settings_colour)
         self.command_label.config(font=('TkDefaultFont', 10, 'bold'))
-        self.command_label.grid(row=11, column=0, sticky=tk.W+tk.E, columnspan=3, padx=self.outer_padding, pady=(self.outer_padding, self.inner_padding))
+        self.command_label.grid(row=10, column=0, sticky=tk.W+tk.E, columnspan=3, padx=self.outer_padding, pady=(self.outer_padding, self.inner_padding))
+
+        # Copy button
+        self.run_button = tk.Button(self.frame_run, text='Copy to clipboard', pady=self.outer_padding/2, command=self.copy_command)
+        self.run_button.config(font=('TkDefaultFont', 10, 'bold'))
+        self.run_button.grid(row=12, column=0, columnspan=3, sticky=tk.W+tk.E, padx=self.outer_padding, pady=self.outer_padding/2)
 
         # Run button
         self.run_button = tk.Button(self.frame_run, textvariable=self.run_button_text, pady=self.outer_padding/2, fg='red', command=self.run_analysis)
@@ -240,14 +247,14 @@ class VPToolboxGui:
         self.frame_view.grid(row=0, column=2, sticky='news')
 
         # Visualisation header
-        self.results_label = tk.Label(self.frame_view, justify=tk.CENTER, wraplength=self.wrap_length, text='Visualisation', bg=results_colour)
-        self.results_label.config(font=('Roboto', 24))
-        self.results_label.grid(row=0, column=0, columnspan=3, padx=self.inner_padding, pady=self.outer_padding)
+        self.visual_label = tk.Label(self.frame_view, justify=tk.CENTER, wraplength=self.wrap_length, text='Visualisation', bg=results_colour)
+        self.visual_label.config(font=('Roboto', 24))
+        self.visual_label.grid(row=0, column=0, columnspan=3, padx=self.inner_padding, pady=self.outer_padding)
 
         # Results options
-        self.empty_label = tk.Label(self.frame_view, justify=tk.CENTER, wraplength=self.wrap_length, text='Results options', bg=results_colour)
-        self.empty_label.config(font=('TkDefaultFont', 10, 'bold'))
-        self.empty_label.grid(row=1, column=0, columnspan=3, padx=self.outer_padding, pady=(0, self.inner_padding), sticky=tk.W+tk.E)
+        self.results_label = tk.Label(self.frame_view, justify=tk.CENTER, wraplength=self.wrap_length, text='Results options', bg=results_colour)
+        self.results_label.config(font=('TkDefaultFont', 10, 'bold'))
+        self.results_label.grid(row=1, column=0, columnspan=3, padx=self.outer_padding, pady=(0, self.inner_padding), sticky=tk.W+tk.E)
 
         # Change surface
         tk.Button(self.frame_view, text='Change surface', width=bw, command=self.set_view_surf).grid(row=2, column=0, sticky=tk.W+tk.E, padx=(self.outer_padding, self.inner_padding), pady=self.inner_padding)
@@ -259,6 +266,23 @@ class VPToolboxGui:
 
         # Open wb_view
         tk.Button(self.frame_view, text='Open wb_view', command=self.open_wb_view).grid(row=4, column=2, sticky=tk.W+tk.E, padx=(self.inner_padding, self.outer_padding), pady=self.inner_padding)
+
+    # Kill the processes before closing the GUI
+    def close_gui(self):
+        # Check if process was created before closing
+        if self.process is not None:
+            try:
+                self.process.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                # If the process has not finished within 3 seconds
+                # of pressing the button, stop it and stop all the spawned children
+                process = psutil.Process(self.process.pid)
+                for proc in process.children(recursive=True):
+                    proc.kill()
+                process.kill()
+
+        # Destroy the window
+        self.master.destroy()
 
     # Update the command when a new option is chosen
     def update_on_choose(self, value):
@@ -279,7 +303,10 @@ class VPToolboxGui:
                 if self.args[flag].nargs == 0:
                     vb_cmd = f'{vb_cmd} {flag}'
                 else:
-                    vb_cmd = f'{vb_cmd} {flag} {val}'
+                    if ' ' in val:
+                        vb_cmd = f'{vb_cmd} {flag} \"{val}\"'
+                    else:
+                        vb_cmd = f'{vb_cmd} {flag} {val}'
 
         # Display command in text field
         self.cmd_display.delete('1.0', tk.END)
@@ -287,10 +314,15 @@ class VPToolboxGui:
 
         return vb_cmd
 
+    # Copy button logic
+    def copy_command(self):
+        vb_cmd = self.update_command()
+        self.master.clipboard_clear()
+        self.master.clipboard_append(vb_cmd.replace('\n', ' '))
+
     # Run button logic
     def run_analysis(self):
         vb_cmd = self.update_command()
-
         print(vb_cmd)
 
         # Change the button text/colour while running
@@ -436,9 +468,9 @@ class VPToolboxGui:
 
     # Show the 'Set mask file' button on the grid
     def show_mask_file_input(self):
-        self.mask_file_btn.grid(row=7, column=1, sticky=tk.W+tk.E, padx=self.inner_padding, pady=self.inner_padding)
-        self.mask_file_entry.grid(row=7, column=2, sticky=tk.W+tk.E, padx=(self.inner_padding, self.outer_padding), pady=self.inner_padding)
-        self.mask_file_qst_btn.grid(row=7, column=0, sticky=tk.W+tk.E, padx=(self.outer_padding, self.inner_padding), pady=self.inner_padding)
+        self.mask_file_btn.grid(row=6, column=1, sticky=tk.W+tk.E, padx=self.inner_padding, pady=self.inner_padding)
+        self.mask_file_entry.grid(row=6, column=2, sticky=tk.W+tk.E, padx=(self.inner_padding, self.outer_padding), pady=self.inner_padding)
+        self.mask_file_qst_btn.grid(row=6, column=0, sticky=tk.W+tk.E, padx=(self.outer_padding, self.inner_padding), pady=self.inner_padding)
 
     # Remove the 'Set mask file' button on the grid
     def remove_mask_file_input(self):
@@ -448,9 +480,9 @@ class VPToolboxGui:
 
     # Show the 'Set cluster file' button on the grid
     def show_cluster_file_input(self):
-        self.clst_file_btn.grid(row=8, column=1, sticky=tk.W+tk.E, padx=self.inner_padding, pady=self.inner_padding)
-        self.clst_file_entry.grid(row=8, column=2, sticky=tk.W+tk.E, padx=(self.inner_padding, self.outer_padding), pady=self.inner_padding)
-        self.clst_file_qst_btn.grid(row=8, column=0, sticky=tk.W+tk.E, padx=(self.outer_padding, self.inner_padding), pady=self.inner_padding)
+        self.clst_file_btn.grid(row=7, column=1, sticky=tk.W+tk.E, padx=self.inner_padding, pady=self.inner_padding)
+        self.clst_file_entry.grid(row=7, column=2, sticky=tk.W+tk.E, padx=(self.inner_padding, self.outer_padding), pady=self.inner_padding)
+        self.clst_file_qst_btn.grid(row=7, column=0, sticky=tk.W+tk.E, padx=(self.outer_padding, self.inner_padding), pady=self.inner_padding)
 
     # Remove the 'Set cluster file' button on the grid
     def remove_cluster_file_input(self):
