@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="vb_toolbox",
-    version="1.1.2",
+    version="1.1.4",
     author="Lucas da Costa Campos",
     author_email="lqccampos@gmail.com",
     description="Library and command-line tool to calculate the Vogt-Bailey index of a dataset",
@@ -27,7 +27,8 @@ setuptools.setup(
         "scipy",
         "nibabel",
         "multiprocess",
-        "Pillow"
+        "Pillow",
+        "psutil"
     ],
     entry_points={
         'console_scripts':[

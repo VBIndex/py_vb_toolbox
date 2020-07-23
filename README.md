@@ -18,6 +18,7 @@ nibabel
 numpy
 scipy
 pillow
+psutil
 ```
 
 The preferred way to install is through pip. It is as easy as

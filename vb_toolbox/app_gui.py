@@ -91,10 +91,35 @@ class VPToolboxGui:
         self.view_surf = tk.StringVar()
         self.view_surf.set('None')
 
-        # Set the colours for each frame
-        info_colour = 'burlywood3'
-        settings_colour = 'burlywood2'
-        results_colour = 'burlywood3'
+        # Set the colour mode
+        self.colour_mode = tk.StringVar()
+        self.colour_mode.set('Dark Mode')
+
+        # Set the colour state
+        self.is_light = True
+
+        # Set the colours for the frames, buttons and foreground text
+        self.light_0 = 'gray70'
+        self.light_1 = 'gray80'
+
+        self.dark_0 = 'gray10'
+        self.dark_1 = 'gray15'
+
+        self.button_dark = 'gray30'
+        self.button_light = 'gray99'
+
+        self.light_red = 'red2'
+        self.dark_red = 'light salmon'
+
+        self.light_blue = 'blue'
+        self.dark_blue = 'sky blue'
+
+        self.info_colour = self.light_0
+        self.settings_colour = self.light_1
+        self.results_colour = self.light_0
+
+        self.run_colour = self.light_red
+        self.running_colour = self.light_blue
 
         # Set the padding for the elements
         self.outer_padding = 10
@@ -107,13 +132,13 @@ class VPToolboxGui:
             self.wrap_length = 550
 
         # Construct frame containing app info
-        self.frame_info = tk.Frame(self.master, padx=self.outer_padding, pady=self.outer_padding, bg=info_colour)
+        self.frame_info = tk.Frame(self.master, padx=self.outer_padding, pady=self.outer_padding, bg=self.info_colour)
         self.frame_info.grid(row=0, column=0, sticky='news')
 
         # Set a title with the name of the app
-        self.info_title = tk.Label(self.frame_info, justify=tk.CENTER, wraplength=self.wrap_length, text='Vogt-Bailey Toolbox', bg=info_colour)
+        self.info_title = tk.Label(self.frame_info, justify=tk.CENTER, wraplength=self.wrap_length, text='Vogt-Bailey Toolbox', bg=self.info_colour)
         self.info_title.config(font=('Roboto', 40))
-        self.info_title.grid(sticky=tk.W+tk.E+tk.E, padx=self.outer_padding, pady=self.outer_padding)
+        self.info_title.grid(sticky=tk.W+tk.E, padx=self.outer_padding, pady=self.outer_padding)
 
         # Place icon in frame
         img = Image.open(os.path.join(self.sd, 'assets/vb_gui_icon.png'))
@@ -121,151 +146,164 @@ class VPToolboxGui:
         pixels_x, pixels_y = tuple([int(zoom * x) for x in img.size])
 
         self.icon = ImageTk.PhotoImage(img.resize((pixels_x, pixels_y)))
-        self.label_icon = tk.Label(self.frame_info, image=self.icon, bg=info_colour)
+        self.label_icon = tk.Label(self.frame_info, image=self.icon, bg=self.info_colour)
         self.label_icon.image = self.icon
         self.label_icon.grid()
 
         # Application info
-        tk.Label(self.frame_info, justify=tk.LEFT, wraplength=self.wrap_length, text='Calculate the Vogt-Bailey (VB) index of a dataset by choosing from the three main analysis types.', bg=info_colour).grid(sticky=tk.W+tk.E, padx=self.outer_padding, pady=self.outer_padding/2)
+        self.desc = tk.Label(self.frame_info, justify=tk.LEFT, wraplength=self.wrap_length, text='Calculate the Vogt-Bailey (VB) index of a dataset by choosing from the three main analysis types.', bg=self.info_colour)
+        self.desc.config(font=('TkDefaultFont', 9))
+        self.desc.grid(sticky=tk.W+tk.E, padx=self.outer_padding, pady=self.outer_padding/2)
 
         # TODO: add more references to dictionary
         refs_dict = {'Bajada et al. (2020), NeuroImage\nDOI: 10.1016/j.neuroimage.2020.117140': 'https://doi.org/10.1016/j.neuroimage.2020.117140'}
 
         for key, value in refs_dict.items():
-            link = tk.Label(self.frame_info, justify=tk.LEFT,  wraplength=self.wrap_length, text=key, fg='black', cursor='hand2', bg=info_colour)
+            link = tk.Label(self.frame_info, justify=tk.LEFT,  wraplength=self.wrap_length, text=key, cursor='hand2', fg='black', bg=self.info_colour)
+            link.config(font=('TkDefaultFont', 9))
             link.grid(sticky=tk.W, padx=self.outer_padding, pady=self.outer_padding/2)
             link.bind('<Button-1>', lambda e: webbrowser.open_new(value))
 
         # Quick start button
-        tk.Button(self.frame_info, text='Quick Start', command=self.show_quick_start).grid(sticky=tk.W+tk.E+tk.E, padx=self.outer_padding, pady=self.outer_padding/2)
+        tk.Button(self.frame_info, text='Quick Start', command=self.show_quick_start, bg=self.button_light).grid(sticky=tk.W+tk.E, padx=self.outer_padding, pady=self.outer_padding/2)
 
         # About button
-        tk.Button(self.frame_info, text='About', command=self.show_about).grid(sticky=tk.W+tk.E+tk.E, padx=self.outer_padding, pady=self.outer_padding/2)
+        tk.Button(self.frame_info, text='About', command=self.show_about, bg=self.button_light).grid(sticky=tk.W+tk.E, padx=self.outer_padding, pady=self.outer_padding/2)
 
         # Github button
-        tk.Button(self.frame_info, text='GitHub', command=lambda: webbrowser.open_new('https://github.com/VBIndex/py_vb_toolbox')).grid(sticky=tk.W+tk.E+tk.E, padx=self.outer_padding, pady=self.outer_padding/2)
+        tk.Button(self.frame_info, text='GitHub', command=lambda: webbrowser.open_new('https://github.com/VBIndex/py_vb_toolbox'), bg=self.button_light).grid(sticky=tk.W+tk.E, padx=self.outer_padding, pady=self.outer_padding/2)
+
+        # Light Mode / Dark Mode button
+        tk.Button(self.frame_info, textvariable=self.colour_mode, command=self.change_colour, bg=self.button_light).grid(sticky=tk.W+tk.E, padx=self.outer_padding, pady=self.outer_padding/2)
 
         # Construct frame containing settings
-        self.frame_run = tk.Frame(self.master, padx=self.outer_padding, pady=self.outer_padding, bg=settings_colour)
+        self.frame_run = tk.Frame(self.master, padx=self.outer_padding, pady=self.outer_padding, bg=self.settings_colour)
         self.frame_run.grid(row=0, column=1, sticky='news')
 
         # Declare the command display so that it can be updated by the other variables
-        self.cmd_display = scrolledtext.ScrolledText(self.frame_run, height=7, width=35)
+        self.cmd_display = scrolledtext.ScrolledText(self.frame_run, height=7, width=35, bg=self.button_light)
         self.cmd_display.grid(row=11, column=0, columnspan=3, sticky=tk.W+tk.E, padx=self.outer_padding, pady=(self.inner_padding, self.outer_padding/2))
+        self.cmd_display.configure(state='disabled')
 
         # Set the box width
         bw = 15
 
         # Settings header
-        self.settings_label = tk.Label(self.frame_run, justify=tk.CENTER, wraplength=self.wrap_length, text='Settings', bg=settings_colour)
-        self.settings_label.config(font=('Roboto', 24))
+        self.settings_label = tk.Label(self.frame_run, justify=tk.CENTER, wraplength=self.wrap_length, text='Settings', bg=self.settings_colour)
+        self.settings_label.config(font=('Roboto', 22))
         self.settings_label.grid(row=0, column=0, columnspan=3, padx=self.outer_padding, pady=self.outer_padding)
 
         # Input arguments sub-header
-        self.input_label = tk.Label(self.frame_run, justify=tk.CENTER, wraplength=self.wrap_length, text='Input arguments', bg=settings_colour)
+        self.input_label = tk.Label(self.frame_run, justify=tk.CENTER, wraplength=self.wrap_length, text='Input arguments', bg=self.settings_colour)
         self.input_label.config(font=('TkDefaultFont', 10, 'bold'))
         self.input_label.grid(row=1, column=0, columnspan=3, padx=self.outer_padding, pady=(0, self.inner_padding), sticky=tk.W+tk.E)
 
         # -s
         # Set the surface file
-        tk.Button(self.frame_run, text='Set surface file', width=bw, command=lambda: self.fname_to_flag('-s')).grid(row=2, column=1, sticky=tk.W+tk.E, padx=self.inner_padding, pady=self.inner_padding)
-        self.surface_entry = tk.Entry(self.frame_run, textvariable=self.var_dict['-s'])
+        tk.Button(self.frame_run, text='Set surface file', width=bw, command=lambda: self.fname_to_flag('-s'), bg=self.button_light).grid(row=2, column=1, sticky=tk.W+tk.E, padx=self.inner_padding, pady=self.inner_padding)
+        self.surface_entry = tk.Entry(self.frame_run, textvariable=self.var_dict['-s'], bg=self.button_light)
         self.surface_entry.bind('<KeyRelease>', self.update_on_key_release)
         self.surface_entry.grid(row=2, column=2, sticky=tk.W+tk.E, padx=(self.inner_padding, self.outer_padding), pady=self.inner_padding)
-        tk.Button(self.frame_run, text='?', command=lambda: self.show_help('-s')).grid(row=2, column=0, sticky=tk.W+tk.E, padx=(self.outer_padding, self.inner_padding), pady=self.inner_padding)
+        tk.Button(self.frame_run, text='?', command=lambda: self.show_help('-s'), bg=self.button_light).grid(row=2, column=0, sticky=tk.W+tk.E, padx=(self.outer_padding, self.inner_padding), pady=self.inner_padding)
 
         # -d
         # Set the data file
-        tk.Button(self.frame_run, text='Set data file', width=bw, command=lambda: self.fname_to_flag('-d')).grid(row=3, column=1, sticky=tk.W+tk.E, padx=self.inner_padding, pady=self.inner_padding)
-        self.data_entry = tk.Entry(self.frame_run, textvariable=self.var_dict['-d'])
+        tk.Button(self.frame_run, text='Set data file', width=bw, command=lambda: self.fname_to_flag('-d'), bg=self.button_light).grid(row=3, column=1, sticky=tk.W+tk.E, padx=self.inner_padding, pady=self.inner_padding)
+        self.data_entry = tk.Entry(self.frame_run, textvariable=self.var_dict['-d'], bg=self.button_light)
         self.data_entry.bind('<KeyRelease>', self.update_on_key_release)
         self.data_entry.grid(row=3, column=2, sticky=tk.W+tk.E, padx=(self.inner_padding, self.outer_padding), pady=self.inner_padding)
-        tk.Button(self.frame_run, text='?', command=lambda: self.show_help('-d')).grid(row=3, column=0, sticky=tk.W+tk.E, padx=(self.outer_padding, self.inner_padding), pady=self.inner_padding)
+        tk.Button(self.frame_run, text='?', command=lambda: self.show_help('-d'), bg=self.button_light).grid(row=3, column=0, sticky=tk.W+tk.E, padx=(self.outer_padding, self.inner_padding), pady=self.inner_padding)
 
         # -o
         # Set the output file/folder name
-        tk.Button(self.frame_run, text='Output name', width=bw, command=self.set_output_name).grid(row=4, column=1, sticky=tk.W+tk.E, padx=self.inner_padding, pady=self.inner_padding)
-        self.output_entry = tk.Entry(self.frame_run, textvariable=self.var_dict['-o'])
+        tk.Button(self.frame_run, text='Output name', width=bw, command=self.set_output_name, bg=self.button_light).grid(row=4, column=1, sticky=tk.W+tk.E, padx=self.inner_padding, pady=self.inner_padding)
+        self.output_entry = tk.Entry(self.frame_run, textvariable=self.var_dict['-o'], bg=self.button_light)
         self.output_entry.bind('<KeyRelease>', self.update_on_key_release)
         self.output_entry.grid(row=4, column=2, sticky=tk.W+tk.E, padx=(self.inner_padding, self.outer_padding), pady=self.inner_padding)
-        tk.Button(self.frame_run, text='?', command=lambda: self.show_help('-o')).grid(row=4, column=0, sticky=tk.W+tk.E, padx=(self.outer_padding, self.inner_padding), pady=self.inner_padding)
+        tk.Button(self.frame_run, text='?', command=lambda: self.show_help('-o'), bg=self.button_light).grid(row=4, column=0, sticky=tk.W+tk.E, padx=(self.outer_padding, self.inner_padding), pady=self.inner_padding)
 
         # -fb
         # Analysis type
-        tk.Label(self.frame_run, text='Analysis type', width=bw, anchor='center').grid(row=5, column=1, sticky=tk.W+tk.E, padx=self.inner_padding, pady=self.inner_padding)
-        tk.OptionMenu(self.frame_run, self.analysis, 'Searchlight', 'Clustered', 'Full brain', command=self.analysis_type).grid(row=5, column=2, sticky=tk.W+tk.E+tk.E, padx=(self.inner_padding, self.outer_padding), pady=self.inner_padding)
-        tk.Button(self.frame_run, text='?', command=lambda: self.show_help('-fb')).grid(row=5, column=0, sticky=tk.W+tk.E, padx=(self.outer_padding, self.inner_padding), pady=self.inner_padding)
+        tk.Label(self.frame_run, text='Analysis type', width=bw, anchor='center', bg=self.button_light).grid(row=5, column=1, sticky=tk.W+tk.E, padx=self.inner_padding, pady=self.inner_padding)
+        self.analysis_option = tk.OptionMenu(self.frame_run, self.analysis, 'Searchlight', 'Clustered', 'Full brain', command=self.analysis_type)
+        self.analysis_option.config(bg=self.button_light)
+        self.analysis_option.grid(row=5, column=2, sticky=tk.W+tk.E, padx=(self.inner_padding, self.outer_padding), pady=self.inner_padding)
+        tk.Button(self.frame_run, text='?', command=lambda: self.show_help('-fb'), bg=self.button_light).grid(row=5, column=0, sticky=tk.W+tk.E, padx=(self.outer_padding, self.inner_padding), pady=self.inner_padding)
 
         # -m
         # Set the mask file
-        self.mask_file_btn = tk.Button(self.frame_run, text='Set mask file', width=bw, command=lambda: self.fname_to_flag('-m'))
-        self.mask_file_entry = tk.Entry(self.frame_run, textvariable=self.var_dict['-m'])
+        self.mask_file_btn = tk.Button(self.frame_run, text='Set mask file', width=bw, command=lambda: self.fname_to_flag('-m'), bg=self.button_light)
+        self.mask_file_entry = tk.Entry(self.frame_run, textvariable=self.var_dict['-m'], bg=self.button_light)
         self.mask_file_entry.bind('<KeyRelease>', self.update_on_key_release)
-        self.mask_file_qst_btn = tk.Button(self.frame_run, text='?', command=lambda: self.show_help('-m'))
+        self.mask_file_qst_btn = tk.Button(self.frame_run, text='?', command=lambda: self.show_help('-m'), bg=self.button_light)
 
         # Buttons and entry for the mask file are shown by default
         self.show_mask_file_input()
 
         # -c
         # Set the cluster file
-        self.clst_file_btn = tk.Button(self.frame_run, text='Set cluster file', width=bw, command=lambda: self.fname_to_flag('-c'))
-        self.clst_file_entry = tk.Entry(self.frame_run, textvariable=self.var_dict['-c'])
+        self.clst_file_btn = tk.Button(self.frame_run, text='Set cluster file', width=bw, command=lambda: self.fname_to_flag('-c'), bg=self.button_light)
+        self.clst_file_entry = tk.Entry(self.frame_run, textvariable=self.var_dict['-c'], bg=self.button_light)
         self.clst_file_entry.bind('<KeyRelease>', self.update_on_key_release)
-        self.clst_file_qst_btn = tk.Button(self.frame_run, text='?', command=lambda: self.show_help('-c'))
-
-        # -j
-        # Set the number of parallel jobs
-        tk.Label(self.frame_run, text='Jobs', width=bw, anchor='center').grid(row=8, column=1, sticky=tk.W+tk.E, padx=self.inner_padding, pady=self.inner_padding)
-        self.jobs_entry = tk.Entry(self.frame_run, textvariable=self.var_dict['-j'])
-        self.jobs_entry.bind('<KeyRelease>', self.update_on_key_release)
-        self.jobs_entry.grid(row=8, column=2, sticky=tk.W+tk.E, padx=(self.inner_padding, self.outer_padding), pady=self.inner_padding)
-        tk.Button(self.frame_run, text='?', command=lambda: self.show_help('-j')).grid(row=8, column=0, sticky=tk.W+tk.E, padx=(self.outer_padding, self.inner_padding), pady=self.inner_padding)
+        self.clst_file_qst_btn = tk.Button(self.frame_run, text='?', command=lambda: self.show_help('-c'), bg=self.button_light)
 
         # -n
         # Set the normalisation options
-        tk.Label(self.frame_run, text='Normalization', width=bw, anchor='center').grid(row=9, column=1, sticky=tk.W+tk.E, padx=self.inner_padding, pady=self.inner_padding)
-        tk.OptionMenu(self.frame_run, self.var_dict['-n'], 'geig', 'unnorm', 'rw', 'sym', command=self.update_on_choose).grid(row=9, column=2, sticky=tk.W+tk.E, padx=(self.inner_padding, self.outer_padding), pady=self.inner_padding)
-        tk.Button(self.frame_run, text='?', command=lambda: self.show_help('-n')).grid(row=9, column=0, sticky=tk.W+tk.E, padx=(self.outer_padding, self.inner_padding), pady=self.inner_padding)
+        tk.Label(self.frame_run, text='Normalization', width=bw, anchor='center', bg=self.button_light).grid(row=8, column=1, sticky=tk.W+tk.E, padx=self.inner_padding, pady=self.inner_padding)
+        self.norm_option = tk.OptionMenu(self.frame_run, self.var_dict['-n'], 'geig', 'unnorm', 'rw', 'sym', command=self.update_on_choose)
+        self.norm_option.config(bg=self.button_light)
+        self.norm_option.grid(row=8, column=2, sticky=tk.W+tk.E, padx=(self.inner_padding, self.outer_padding), pady=self.inner_padding)
+        tk.Button(self.frame_run, text='?', command=lambda: self.show_help('-n'), bg=self.button_light).grid(row=8, column=0, sticky=tk.W+tk.E, padx=(self.outer_padding, self.inner_padding), pady=self.inner_padding)
+
+        # -j
+        # Set the number of parallel jobs
+        tk.Label(self.frame_run, text='Jobs', width=bw, anchor='center', bg=self.button_light).grid(row=9, column=1, sticky=tk.W+tk.E, padx=self.inner_padding, pady=self.inner_padding)
+        self.jobs_entry = tk.Entry(self.frame_run, textvariable=self.var_dict['-j'], bg=self.button_light)
+        self.jobs_entry.bind('<KeyRelease>', self.update_on_key_release)
+        self.jobs_entry.grid(row=9, column=2, sticky=tk.W+tk.E, padx=(self.inner_padding, self.outer_padding), pady=self.inner_padding)
+        tk.Button(self.frame_run, text='?', command=lambda: self.show_help('-j'), bg=self.button_light).grid(row=9, column=0, sticky=tk.W+tk.E, padx=(self.outer_padding, self.inner_padding), pady=self.inner_padding)
 
         # Command sub-header
-        self.command_label = tk.Label(self.frame_run, justify=tk.CENTER, wraplength=self.wrap_length, text='Command', bg=settings_colour)
+        self.command_label = tk.Label(self.frame_run, justify=tk.CENTER, wraplength=self.wrap_length, text='Command', bg=self.settings_colour)
         self.command_label.config(font=('TkDefaultFont', 10, 'bold'))
         self.command_label.grid(row=10, column=0, sticky=tk.W+tk.E, columnspan=3, padx=self.outer_padding, pady=(self.outer_padding, self.inner_padding))
 
         # Copy button
-        self.run_button = tk.Button(self.frame_run, text='Copy to clipboard', pady=self.outer_padding/2, command=self.copy_command)
+        self.run_button = tk.Button(self.frame_run, text='Copy to clipboard', command=self.copy_command, bg=self.button_light)
         self.run_button.config(font=('TkDefaultFont', 10, 'bold'))
         self.run_button.grid(row=12, column=0, columnspan=3, sticky=tk.W+tk.E, padx=self.outer_padding, pady=self.outer_padding/2)
 
         # Run button
-        self.run_button = tk.Button(self.frame_run, textvariable=self.run_button_text, pady=self.outer_padding/2, fg='red', command=self.run_analysis)
+        self.run_button = tk.Button(self.frame_run, textvariable=self.run_button_text, command=self.run_analysis, fg=self.run_colour, bg=self.button_light)
         self.run_button.config(font=('TkDefaultFont', 10, 'bold'))
         self.run_button.grid(row=13, column=0, columnspan=3, sticky=tk.W+tk.E, padx=self.outer_padding, pady=self.outer_padding/2)
 
         # Construct frame for viewing options (use info from -s and -o as defaults)
-        self.frame_view = tk.Frame(self.master, padx=self.outer_padding, pady=self.outer_padding, bg=results_colour)
+        self.frame_view = tk.Frame(self.master, padx=self.outer_padding, pady=self.outer_padding, bg=self.results_colour)
         self.frame_view.grid(row=0, column=2, sticky='news')
 
         # Visualisation header
-        self.visual_label = tk.Label(self.frame_view, justify=tk.CENTER, wraplength=self.wrap_length, text='Visualisation', bg=results_colour)
-        self.visual_label.config(font=('Roboto', 24))
+        self.visual_label = tk.Label(self.frame_view, justify=tk.CENTER, wraplength=self.wrap_length, text='Visualisation', bg=self.results_colour)
+        self.visual_label.config(font=('Roboto', 22))
         self.visual_label.grid(row=0, column=0, columnspan=3, padx=self.inner_padding, pady=self.outer_padding)
 
         # Results options
-        self.results_label = tk.Label(self.frame_view, justify=tk.CENTER, wraplength=self.wrap_length, text='Results options', bg=results_colour)
+        self.results_label = tk.Label(self.frame_view, justify=tk.CENTER, wraplength=self.wrap_length, text='Results options', bg=self.results_colour)
         self.results_label.config(font=('TkDefaultFont', 10, 'bold'))
         self.results_label.grid(row=1, column=0, columnspan=3, padx=self.outer_padding, pady=(0, self.inner_padding), sticky=tk.W+tk.E)
 
         # Change surface
-        tk.Button(self.frame_view, text='Change surface', width=bw, command=self.set_view_surf).grid(row=2, column=0, sticky=tk.W+tk.E, padx=(self.outer_padding, self.inner_padding), pady=self.inner_padding)
-        tk.Entry(self.frame_view, textvariable=self.view_surf).grid(row=2, column=2, sticky=tk.W+tk.E, padx=(self.inner_padding, self.outer_padding), pady=self.inner_padding)
+        tk.Button(self.frame_view, text='Change surface', width=bw, command=self.set_view_surf, bg=self.button_light).grid(row=2, column=0, sticky=tk.W+tk.E, padx=(self.outer_padding, self.inner_padding), pady=self.inner_padding)
+        self.surface_vis_entry = tk.Entry(self.frame_view, textvariable=self.view_surf, bg=self.button_light)
+        self.surface_vis_entry.grid(row=2, column=2, sticky=tk.W+tk.E, padx=(self.inner_padding, self.outer_padding), pady=self.inner_padding)
 
         # Change data folder
-        tk.Button(self.frame_view, text='Change data folder', width=bw, command=self.set_view_folder).grid(row=3, column=0, sticky=tk.W+tk.E, padx=(self.outer_padding, self.inner_padding), pady=self.inner_padding)
-        tk.Entry(self.frame_view, textvariable=self.view_folder).grid(row=3, column=2, sticky=tk.W+tk.E, padx=(self.inner_padding, self.outer_padding), pady=self.inner_padding)
+        tk.Button(self.frame_view, text='Change data folder', width=bw, command=self.set_view_folder, bg=self.button_light).grid(row=3, column=0, sticky=tk.W+tk.E, padx=(self.outer_padding, self.inner_padding), pady=self.inner_padding)
+        self.data_vis_entry = tk.Entry(self.frame_view, textvariable=self.view_folder, bg=self.button_light)
+        self.data_vis_entry.grid(row=3, column=2, sticky=tk.W+tk.E, padx=(self.inner_padding, self.outer_padding), pady=self.inner_padding)
 
         # Open wb_view
-        tk.Button(self.frame_view, text='Open wb_view', command=self.open_wb_view).grid(row=4, column=2, sticky=tk.W+tk.E, padx=(self.inner_padding, self.outer_padding), pady=self.inner_padding)
+        tk.Button(self.frame_view, text='Open wb_view', command=self.open_wb_view, bg=self.button_light).grid(row=4, column=2, sticky=tk.W+tk.E, padx=(self.inner_padding, self.outer_padding), pady=self.inner_padding)
 
     # Kill the processes before closing the GUI
     def close_gui(self):
@@ -290,8 +328,12 @@ class VPToolboxGui:
 
     # Update the command when an entry is modified
     def update_on_key_release(self, event):
+        # Update the visualisation fields when the entries are changed
+        self.view_surf.set(self.var_dict['-s'].get())
+        self.view_folder.set(self.var_dict['-o'].get())
         self.update_command()
 
+    # Update the text inside the command box
     def update_command(self):
         # Construct command
         exclude_list = ['None', 'False', '==SUPPRESS==']
@@ -309,8 +351,11 @@ class VPToolboxGui:
                         vb_cmd = f'{vb_cmd} {flag} {val}'
 
         # Display command in text field
+        self.cmd_display.configure(state='normal')
         self.cmd_display.delete('1.0', tk.END)
         self.cmd_display.insert(tk.END, vb_cmd.replace(' -', '\n-'))
+        # Set the state to DISABLED so that the field cannot be edited
+        self.cmd_display.configure(state='disabled')
 
         return vb_cmd
 
@@ -327,13 +372,13 @@ class VPToolboxGui:
 
         # Change the button text/colour while running
         self.run_button_text.set('Running...')
-        self.run_button.config(fg='blue')
+        self.run_button.config(fg=self.running_colour)
 
         # Run the command in a subprocess
         self.process = subprocess.Popen(vb_cmd, stderr=subprocess.PIPE, shell=True)
 
         # Read any stderr output from the process using a thread and store them in a queue
-        self.q = queue.Queue(maxsize = 1024)
+        self.q = queue.Queue(maxsize=1024)
         t = threading.Thread(target=self.reader_thread, args=[self.q])
         t.daemon = True
         t.start()
@@ -357,7 +402,7 @@ class VPToolboxGui:
             if line is None:
                 if self.process.poll() is not None:
                     self.run_button_text.set('Run vb_tool')
-                    self.run_button.config(fg='red')
+                    self.run_button.config(fg=self.run_colour)
                     messagebox.showinfo('Done', 'The process has finished!')
                 else:
                     break
@@ -365,7 +410,7 @@ class VPToolboxGui:
                 if self.process.poll() is not None:
                     if self.process.returncode != 0:
                         self.run_button_text.set('Run vb_tool')
-                        self.run_button.config(fg='red')
+                        self.run_button.config(fg=self.run_colour)
                         messagebox.showinfo('An error occurred!', line)
                     return
                 else:
@@ -465,6 +510,65 @@ class VPToolboxGui:
     def show_about(self):
         about_msg = textwrap.shorten(textwrap.dedent(self.parser.epilog), width=1000, drop_whitespace=False).replace('|n ', '\n\n')
         messagebox.showinfo('About vb_tool', about_msg)
+
+    # Light mode / Dark mode logic
+    def change_colour(self):
+        frame_colour_0 = None
+        frame_colour_1 = None
+        button_colour = None
+        fg = None
+        red = None
+
+        # Change the colours depending on whether it is
+        if self.is_light == True:
+            frame_colour_0 = self.dark_0
+            frame_colour_1 = self.dark_1
+            button_colour = self.button_dark
+            fg = 'white'
+            self.run_colour = self.dark_red
+            self.running_colour = self.dark_blue
+            self.colour_mode.set('Light Mode')
+        else:
+            frame_colour_0 = self.light_0
+            frame_colour_1 = self.light_1
+            button_colour = self.button_light
+            fg = 'black'
+            self.run_colour = self.light_red
+            self.running_colour = self.light_blue
+            self.colour_mode.set('Dark Mode')
+
+        # Change the widgets in the first column
+        for wid in self.frame_info.winfo_children():
+            if 'label' in str(wid):
+                wid.config(fg=fg, background=frame_colour_0)
+            else:
+                wid.config(fg=fg, background=button_colour)
+
+        # Change the widgets in the second column
+        for wid in self.frame_run.winfo_children():
+            if 'label' in str(wid) or 'button' in str(wid) or 'entry' in str(wid) or 'option' in str(wid):
+                wid.config(fg=fg, background=button_colour)
+
+        # Change the widgets in the third column
+        for wid in self.frame_view.winfo_children():
+            if 'label' in str(wid) or 'button' in str(wid) or 'entry' in str(wid) or 'option' in str(wid):
+                wid.config(fg=fg, background=button_colour)
+
+        # Change the frame colour and heading colour of the three columns
+        self.frame_info.config(bg=frame_colour_0)
+
+        self.frame_run.config(background=frame_colour_1)
+        self.settings_label.config(fg=fg, background=frame_colour_1)
+        self.input_label.config(fg=fg, background=frame_colour_1)
+        self.command_label.config(fg=fg, background=frame_colour_1)
+        self.cmd_display.config(fg=fg, background=button_colour)
+        self.run_button.config(fg=self.run_colour)
+
+        self.frame_view.config(background=frame_colour_0)
+        self.visual_label.config(fg=fg, background=frame_colour_0)
+        self.results_label.config(fg=fg, background=frame_colour_0)
+
+        self.is_light = not self.is_light
 
     # Show the 'Set mask file' button on the grid
     def show_mask_file_input(self):
