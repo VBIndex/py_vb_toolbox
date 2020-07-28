@@ -60,21 +60,25 @@ def vb_index_internal_loop(i0, iN, surf_faces, data, norm, print_progress=False)
 
         # Get neighborhood and its data
         # TODO: Make this elegant
-        neighbour_idx = np.array(np.sum(surf_faces == i, 1), np.bool)
-        I = np.unique(surf_faces[neighbour_idx, :])
-        neighborhood = data[I]
-        if len(neighborhood) == 0:
-            print("Warning: no neighborhood")
-            return [0]
+        try:
+            neighbour_idx = np.array(np.sum(surf_faces == i, 1), np.bool)
+            I = np.unique(surf_faces[neighbour_idx, :])
+            neighborhood = data[I]
+            if len(neighborhood) == 0:
+                print("Warning: no neighborhood")
+                return [0]
 
-        # Calculate the eigenvalues
-        affinity = m.create_affinity_matrix(neighborhood)
-        _, _, _, eigenvalues, _ = m.spectral_reorder(affinity, norm)
-        normalisation_factor = np.average(eigenvalues[1:])
+            # Calculate the eigenvalues
+            affinity = m.create_affinity_matrix(neighborhood)
+            _, _, _, eigenvalues, _ = m.spectral_reorder(affinity, norm)
+            normalisation_factor = np.average(eigenvalues[1:])
 
-        # return [0]
-        # Store the result of this run
-        loc_result[idx] = eigenvalues[1]/normalisation_factor
+            # return [0]
+            # Store the result of this run
+            loc_result[idx] = eigenvalues[1]/normalisation_factor
+
+        except:
+            loc_result[idx] = np.nan
 
         if print_progress:
 
