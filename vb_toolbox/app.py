@@ -13,6 +13,8 @@ import numpy as np
 import textwrap as _textwrap
 import vb_toolbox.io as io
 import vb_toolbox.vb_index as vb
+import sys
+import os
 
 class MultilineFormatter(argparse.HelpFormatter):
     def _fill_text(self, text, width, indent):
@@ -101,8 +103,10 @@ def main():
     if args.full_brain:
         print("Running full brain analyses")
         if args.mask is None:
-            print("A mask file must be provided through the --label flag. See --help")
+            sys.stderr.write("A mask file must be provided through the --label flag. See --help")
+            sys.exit(2)
             quit()
+        # Read labels
         _, labels = io.open_gifti(args.mask[0])
         cort_index = np.array(labels, np.bool)
         Z = np.array(cort_index, dtype=np.int)
@@ -111,7 +115,8 @@ def main():
     elif args.clusters is None:
         print("Running searchlight analyses")
         if args.mask is None:
-            print("A mask file must be provided through the --label flag. See --help")
+            sys.stderr.write("A mask file must be provided through the --label flag. See --help")
+            sys.exit(2)
             quit()
         # Read labels
         _, labels = io.open_gifti(args.mask[0])
@@ -120,6 +125,10 @@ def main():
 
     else:
         print("Running ROI analyses")
+        if args.clusters is None:
+            sys.stderr.write("A cluster file must be provided through the --label flag. See --help")
+            sys.exit(2)
+            quit()
         nib, Z = io.open_gifti(args.clusters[0])
         Z = np.array(Z, dtype=np.int)
         result = vb.vb_cluster(vertices, faces, n_cpus, cifti, Z, args.norm[0], args.output[0] + "." + args.norm[0], nib_surf)

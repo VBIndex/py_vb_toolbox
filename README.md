@@ -20,6 +20,8 @@ multiprocess
 nibabel
 numpy
 scipy
+pillow
+psutil
 ```
 
 The preferred way to install is through pip. It is as easy as
@@ -155,6 +157,18 @@ of logical values, the file must contain an array of integers, where each
 integer corresponds to a different cluster. The 0th cluster is special, and
 denotes an area which will *not* be analyzed. In these regards, it has a
 similar use to the cortical mask.
+
+## Usage of `vb_tool` GUI
+
+The VB toolbox can be run through a graphical interface. To do this, simply call
+If you have installed the software through pip, then all that needs to be done
+is to run the following command:
+
+```bash
+vb_gui
+```
+
+## General Notes
 
 ### Note on the data file
 
