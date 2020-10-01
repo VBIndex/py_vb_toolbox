@@ -26,7 +26,7 @@ def force_symmetric(M):
     -------
     M_sym: Symmetric version of M
     """
-    # One diag extracs the diagonal into an array, two
+    # One diag extracts the diagonal into an array, two
     # diags turns the array into a diagonal matrix.
     diag_M = np.diag(np.diag(M))
     triu_M = np.triu(M, 1)
@@ -132,7 +132,7 @@ def spectral_reorder(B, method = 'geig'):
         warnings.warn("""
         The value 1 is being added to your similarity matrix to ensure positivity.
         This may cause issues with interpretation. Consider inputing a positive matrix""",
-        warning.UserWarning)
+        warnings.UserWarning)
         C = B + 1
     else:
         C = B
@@ -149,7 +149,7 @@ def spectral_reorder(B, method = 'geig'):
     C = triuC + triuC.transpose() # Reconstruct a symmetric weighted adjacency matrix eliminating possible small errors in off-diagonal elements
     D =  np.diag(np.sum(C, axis=-1)) # Compute the Degree matrix
 
-    Q = D - C; #Compute un-normalised Laplacian
+    Q = D - C; # Compute un-normalised Laplacian
 
     method = method.lower()
 
@@ -161,7 +161,6 @@ def spectral_reorder(B, method = 'geig'):
         # eigenvectors = -eigenvectors
 
     elif method == 'sym':
-
         # Method using the eigen decomposition of the Symmetric Normalized
         # Laplacian. Note that results should be the same as 'geig'
         T = np.sqrt(D)
@@ -172,8 +171,8 @@ def spectral_reorder(B, method = 'geig'):
         eigenvectors = spl.solve(T, eigenvectors) # renormalize
 
     elif method == 'rw':
-      # Method using eigen decomposition of Random Walk Normalised Laplacian
-      # This method has not been rigorously tested yet
+        # Method using eigen decomposition of Random Walk Normalised Laplacian
+        # This method has not been rigorously tested yet
 
         L = spl.solve(D, Q)
 

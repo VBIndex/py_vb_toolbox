@@ -94,6 +94,25 @@ def main():
 
     n_cpus = args.jobs[0]
     nib_surf, vertices, faces = io.open_gifti_surf(args.surface[0])
+
+    # Get the text contents from the file
+    surf_text = open(args.surface[0], 'r', encoding='latin-1')
+
+    hemi = None
+
+    # Check whether the file is left or right cortex
+    for line in surf_text:
+        if 'CortexLeft' in line:
+            hemi = 'CortexLeft'
+            break
+        elif 'CortexRight' in line:
+            hemi = 'CortexRight'
+            break
+
+    # Add the cortex information to the beginning of the meta data
+    if hemi:
+        nib_surf.meta.data.insert(0, nibabel.gifti.GiftiNVPairs('AnatomicalStructurePrimary', hemi))
+
     nib = nibabel.load(args.data[0])
     if len(nib.darrays) > 1:
         cifti = np.array([n.data for n in nib.darrays]).transpose()

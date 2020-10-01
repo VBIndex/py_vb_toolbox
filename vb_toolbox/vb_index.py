@@ -55,7 +55,7 @@ def vb_index_internal_loop(i0, iN, surf_faces, data, norm, print_progress=False)
     loc_result = np.zeros(diff)
 
     for idx in range(diff):
-        #Calculate the real index
+        # Calculate the real index
         i = idx + i0
 
         # Get neighborhood and its data
@@ -101,7 +101,7 @@ def vb_index(surf_vertices, surf_faces, n_cpus, data, norm, cort_index, output_n
        surf_faces: (M, 3) numpy array
            Faces of the mesh. Used to find the neighborhood of a given vertice
        n_cpus: integer
-               How many CPUS to run the calcualation
+               How many CPUS to run the calculation
        data: (M, N) numpy array
            Data to use the to calculate the VB index. M must math the number of vertices in the mesh
        norm: string
@@ -230,7 +230,7 @@ def vb_cluster(surf_vertices, surf_faces, n_cpus, data, cluster_index, norm, out
        surf_faces: (M, 3) numpy array
            Faces of the mesh. Used to find the neighborhood of a given vertice
        n_cpus: integer
-               How many CPUS to run the calcualation
+               How many CPUS to run the calculation
        data: (M, N) numpy array
            Data to use the to calculate the VB index. M must math the number of vertices in the mesh
        cluster_index: (M) numpy array
