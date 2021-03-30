@@ -157,7 +157,9 @@ def main():
             # Read labels
             _, labels = io.open_gifti(args.mask[0])
             cort_index = np.array(labels, np.bool)
-            brainmask = args.volmask[0]
+            # Read brain mask
+            brainmask = nibabel.load(args.volmask[0])
+            brainmask = np.array(brainmask.dataobj)
             result = vb.vb_hybrid(vertices, brainmask, affine, n_cpus, data, args.norm[0], cort_index, args.output[0] + "." + args.norm[0], nib_surf)
 
         else:
