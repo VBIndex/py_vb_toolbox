@@ -447,7 +447,7 @@ def vb_hybrid(surf_vertices, brain_mask, affine, n_cpus, data, norm, cort_index,
 
     # Save file
     if output_name is not None:
-        io.save_gifti(nib_surf, results, output_name + ".vbi_fix.shape.gii")
+        io.save_gifti(nib_surf, results, output_name + ".vbi-hybrid.shape.gii")
 
     # Cleanup
     pool.close()
