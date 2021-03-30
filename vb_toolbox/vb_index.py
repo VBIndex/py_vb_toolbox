@@ -436,7 +436,7 @@ def vb_hybrid(surf_vertices, brain_mask, affine, n_cpus, data, norm, cort_index,
     threads = []
     for i0 in range(0, n_items, dn):
         iN = min(i0+dn, n_items)
-        threads.append(pool.apply_async(vb_index_internal_loop, (i0, iN, vox_coords, brain_mask, data, norm)))
+        threads.append(pool.apply_async(vb_hybrid_internal_loop, (i0, iN, vox_coords, brain_mask, data, norm)))
 
 
     # Gather the results from the threads we just spawned
