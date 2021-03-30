@@ -57,15 +57,15 @@ def create_parser():
 
     parser.add_argument('-fb', '--full-brain', action='store_true',
                         help="""Calculate full brain feature gradient analyses.""")
-	
-	parser.add_argument('-hy', '--hybrid', action='store_true',
+
+    parser.add_argument('-hy', '--hybrid', action='store_true',
                         help="""Calculate VB index with hybrid approach.""")
 
     parser.add_argument('-vm', '--volmask', metavar='file', type=str,
                                nargs=1, help="""Nifti file containing the whole brain mask
                                in volumetric space. This flag must be set if computing hybrid VB""")
 
-	parser.add_argument('-m', '--mask', metavar='file', type=str,
+    parser.add_argument('-m', '--mask', metavar='file', type=str,
                                nargs=1, help="""File containing the labels to
                                identify the cortex, rather than the medial
                                brain structures. This flag must be set for
@@ -121,14 +121,14 @@ def main():
         nib_surf.meta.data.insert(0, nibabel.gifti.GiftiNVPairs('AnatomicalStructurePrimary', hemi))
 
     nib = nibabel.load(args.data[0])
-	if args.hybrid:
-		data = np.array(nib.dataobj)
-		affine = nib.affine
-	else:
-		if len(nib.darrays) > 1:
-			data = np.array([n.data for n in nib.darrays]).transpose()
-		else:
-			data = nib.darrays[0].data
+    if args.hybrid:
+        data = np.array(nib.dataobj)
+        affine = nib.affine
+    else:
+        if len(nib.darrays) > 1:
+            data = np.array([n.data for n in nib.darrays]).transpose()
+        else:
+            data = nib.darrays[0].data
 
     if args.full_brain:
         print("Running full brain analyses")
@@ -143,32 +143,32 @@ def main():
         result = vb.vb_cluster(vertices, faces, n_cpus, data, Z, args.norm[0], args.output[0] + "." + args.norm[0], nib_surf)
 
     elif args.clusters is None:
-		if args.hybrid:
-			print("Running searchlight analyses with hybrid approach")
-			if args.mask is None:
-				sys.stderr.write("A mask file must be provided through the --mask flag. See --help")
-				sys.exit(2)
-				quit()
-			if args.volmask is None:
-				sys.stderr.write("A volumetric mask file must be provided through the --volmask flag. See --help")
-				sys.exit(2)
-				quit()
-		  
-			# Read labels
-			_, labels = io.open_gifti(args.mask[0])
-			cort_index = np.array(labels, np.bool)
-			result = vb.vb_hybrid(vertices, volmask, affine, n_cpus, data, args.norm[0], cort_index, args.output[0] + "." + args.norm[0], nib_surf)
+        if args.hybrid:
+            print("Running searchlight analyses with hybrid approach")
+            if args.mask is None:
+                sys.stderr.write("A mask file must be provided through the --mask flag. See --help")
+                sys.exit(2)
+                quit()
+            if args.volmask is None:
+                sys.stderr.write("A volumetric mask file must be provided through the --volmask flag. See --help")
+                sys.exit(2)
+                quit()
+          
+            # Read labels
+            _, labels = io.open_gifti(args.mask[0])
+            cort_index = np.array(labels, np.bool)
+            result = vb.vb_hybrid(vertices, volmask, affine, n_cpus, data, args.norm[0], cort_index, args.output[0] + "." + args.norm[0], nib_surf)
 
-		else:
-			print("Running searchlight analyses")
-			if args.mask is None:
-				sys.stderr.write("A mask file must be provided through the --mask flag. See --help")
-				sys.exit(2)
-				quit()
-			# Read labels
-			_, labels = io.open_gifti(args.mask[0])
-			cort_index = np.array(labels, np.bool)
-			result = vb.vb_index(vertices, faces, n_cpus, data, args.norm[0], cort_index, args.output[0] + "." + args.norm[0], nib_surf)
+        else:
+            print("Running searchlight analyses")
+            if args.mask is None:
+                sys.stderr.write("A mask file must be provided through the --mask flag. See --help")
+                sys.exit(2)
+                quit()
+            # Read labels
+            _, labels = io.open_gifti(args.mask[0])
+            cort_index = np.array(labels, np.bool)
+            result = vb.vb_index(vertices, faces, n_cpus, data, args.norm[0], cort_index, args.output[0] + "." + args.norm[0], nib_surf)
 
     else:
         print("Running ROI analyses")
