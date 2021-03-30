@@ -18,7 +18,7 @@ n = None
 
 from multiprocessing import Pool, Value, Lock
 import multiprocessing
-from itertools import product							 
+from itertools import product
 
 def init(a_counter, a_n):
     """Store total number of vertices and counter of vertices computed"""
