@@ -62,7 +62,7 @@ def create_parser():
                         help="""Calculate VB index with hybrid approach.""")
 
     parser.add_argument('-vm', '--volmask', metavar='file', type=str,
-                               nargs=1, help="""Nifti file containing the whole brain mask
+                               nargs=1, default=None, help="""Nifti file containing the whole brain mask
                                in volumetric space. This flag must be set if computing hybrid VB""")
 
     parser.add_argument('-m', '--mask', metavar='file', type=str,
@@ -157,7 +157,8 @@ def main():
             # Read labels
             _, labels = io.open_gifti(args.mask[0])
             cort_index = np.array(labels, np.bool)
-            result = vb.vb_hybrid(vertices, volmask, affine, n_cpus, data, args.norm[0], cort_index, args.output[0] + "." + args.norm[0], nib_surf)
+			brainmask = args.volmask[0]
+            result = vb.vb_hybrid(vertices, brainmask, affine, n_cpus, data, args.norm[0], cort_index, args.output[0] + "." + args.norm[0], nib_surf)
 
         else:
             print("Running searchlight analyses")
