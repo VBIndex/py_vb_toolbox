@@ -208,7 +208,9 @@ def create_affinity_matrix(neighborhood, eps=np.finfo(float).eps, verbose=False)
     affinity: (M, M) numpy array
               Affinity matrix of the neighborhood
     """
-
+    # The following two lines are necessary for when neighborhood is a 1D array, in 
+    # which case neighborhood.shape[0] returns the number of elements in the array, 
+    # not the number of rows.
     neighborhood_len = neighborhood.shape[0]
     neighborhood = neighborhood.reshape(neighborhood_len, -1)
     # Here, the affinity matrix should have n_neighbors x data_size shape
