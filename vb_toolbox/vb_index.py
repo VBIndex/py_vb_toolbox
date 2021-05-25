@@ -77,8 +77,9 @@ def vb_index_internal_loop(i0, iN, surf_faces, data, norm, print_progress=False)
             # return [0]
             # Store the result of this run
             loc_result[idx] = eigenvalues[1]/normalisation_factor
-
-        except:
+        except m.TimeSeriesTooShortError as error:
+            return error
+        except Exception:
             loc_result[idx] = np.nan
 
         if print_progress:
@@ -128,21 +129,29 @@ def vb_index(surf_vertices, surf_faces, n_cpus, data, norm, cort_index, output_n
     # Init multiprocessing components
     counter = Value('i', 0)
     pool = Pool(initializer = init, initargs = (counter, n_items))
+
+    def callback(result):
+        if isinstance(result,Exception):
+            pool.close()
+            pool.terminate()
+
     # vb_index_internal_loop(0, n_items, surf_faces, data, norm)
     # Spawn the threads that are going to do the real work
     threads = []
     for i0 in range(0, n_items, dn):
         iN = min(i0+dn, n_items)
-        threads.append(pool.apply_async(vb_index_internal_loop, (i0, iN, surf_faces, data, norm)))
+        threads.append(pool.apply_async(vb_index_internal_loop, (i0, iN, surf_faces, data, norm),callback=callback))
 
 
     # Gather the results from the threads we just spawned
     results = []
     for i, res in enumerate(threads):
-        for r in res.get():
+        res_ = res.get()
+        if isinstance(res_,Exception):
+            raise res_
+        for r in res_:
             results.append(r)
     results = np.array(results)
-
     results[np.logical_not(cort_index)] = np.nan
 
     # Save file
@@ -195,20 +204,24 @@ def vb_cluster_internal_loop(idx_cluster_0, idx_cluster_N, surf_faces, data, clu
         if(cluster_labels[i] == 0):
             loc_result.append(([], []))
             continue
-        # Get neighborhood and its data
-        neighborhood = data[cluster_index == cluster_labels[i]]
+        try:
+            # Get neighborhood and its data
+            neighborhood = data[cluster_index == cluster_labels[i]]
 
-        # Calculate the eigenvalues
-        affinity = m.create_affinity_matrix(neighborhood)
-        _, _, _, eigenvalues, eigenvectors = m.spectral_reorder(affinity, norm)
-        normalisation_factor = sum(eigenvalues)/len(eigenvalues-1)
+            # Calculate the eigenvalues
+            affinity = m.create_affinity_matrix(neighborhood)
+            _, _, _, eigenvalues, eigenvectors = m.spectral_reorder(affinity, norm)
+            normalisation_factor = sum(eigenvalues)/len(eigenvalues-1)
 
-        # Store the result of this run
-        # Warning: It is not true that the eigenvectors will be all the same
-        # size, as the clusters might be of different sizes
-        val = eigenvalues[1]/normalisation_factor
-        vel = eigenvectors[:, 1]
-        loc_result.append((val, vel))
+            # Store the result of this run
+            # Warning: It is not true that the eigenvectors will be all the same
+            # size, as the clusters might be of different sizes
+            val = eigenvalues[1]/normalisation_factor
+            vel = eigenvectors[:, 1]
+            loc_result.append((val, vel))
+        except m.TimeSeriesTooShortError as error:
+            return error
+
 
         if print_progress:
 
@@ -253,7 +266,7 @@ def vb_cluster(surf_vertices, surf_faces, n_cpus, data, cluster_index, norm, out
                             Resuling Fiedler vectors of the clusters
     """
 
-    # Find the cluster indices, and the mibrain structures
+    # Find the cluster indices, and the midbrain structures
     cluster_labels = np.unique(cluster_index)
     midline_index = cluster_index == 0
 
@@ -266,18 +279,26 @@ def vb_cluster(surf_vertices, surf_faces, n_cpus, data, cluster_index, norm, out
     counter = Value('i', 0)
     pool = Pool(initializer = init, initargs = (counter, n_items))
 
+    def callback(result):
+        if isinstance(result,Exception):
+            pool.close()
+            pool.terminate()
+
     # Spawn the threads that are going to do the real work
     threads = []
     for i0 in range(0, n_items, dn):
         iN = min(i0+dn, n_items)
-        threads.append(pool.apply_async(vb_cluster_internal_loop, (i0, iN, surf_faces, data, cluster_index, norm)))
+        threads.append(pool.apply_async(vb_cluster_internal_loop, (i0, iN, surf_faces, data, cluster_index, norm),callback=callback))
 
 
     # Gather the results from the threads we just spawned
     results = []
     results_eigenvectors_l = []
     for i, res in enumerate(threads):
-        for r, rv in res.get():
+        res_ = res.get()
+        if isinstance(res_,Exception):
+            raise res_
+        for r, rv in res_:
             results.append(r)
             results_eigenvectors_l.append(rv)
     results = np.array(results)
@@ -317,6 +338,7 @@ def get_neighborhood(data,p,mask,n=1):
     neigh_coords = np.array([relative_index for relative_index in product((-1, 0, 1), repeat=3)])+p
     neigh_coords = neigh_coords.astype(int)
     masked_neigh = np.where(mask[neigh_coords[:,0],neigh_coords[:,1], neigh_coords[:,2]])[0]
+
     return data[neigh_coords[masked_neigh,0],neigh_coords[masked_neigh,1], neigh_coords[masked_neigh,2],:]
 
 def vb_hybrid_internal_loop(i0, iN, surf_vertices, brain_mask, data, norm, print_progress=False):
@@ -374,6 +396,8 @@ def vb_hybrid_internal_loop(i0, iN, surf_vertices, brain_mask, data, norm, print
                 #loc_result[idx] = np.mean(affinity[tr_row, tr_col])
             else:
                 loc_result[idx] = np.nan
+        except m.TimeSeriesTooShortError as error:
+            return error
         except Exception:
             traceback.print_exc()
             loc_result[idx] = np.nan
@@ -430,17 +454,25 @@ def vb_hybrid(surf_vertices, brain_mask, affine, n_cpus, data, norm, cort_index,
     counter = Value('i', 0)
     pool = Pool(initializer = init, initargs = (counter, n_items))
 
+    def callback(result):
+        if isinstance(result,Exception):
+            pool.close()
+            pool.terminate()
+
     # Spawn the threads that are going to do the real work
     threads = []
     for i0 in range(0, n_items, dn):
         iN = min(i0+dn, n_items)
-        threads.append(pool.apply_async(vb_hybrid_internal_loop, (i0, iN, vox_coords, brain_mask, data, norm)))
+        threads.append(pool.apply_async(vb_hybrid_internal_loop, (i0, iN, vox_coords, brain_mask, data, norm),callback=callback))
 
 
     # Gather the results from the threads we just spawned
     results = []
     for i, res in enumerate(threads):
-        for r in res.get():
+       res_ = res.get()
+       if isinstance(res_,Exception):
+            raise res_
+       for r in res_:
             results.append(r)
     results = np.array(results)
     results[np.logical_not(cort_index)] = np.nan

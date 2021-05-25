@@ -160,8 +160,12 @@ def main():
             # Read brain mask
             brainmask = nibabel.load(args.volmask[0])
             brainmask = np.array(brainmask.dataobj)
-            result = vb.vb_hybrid(vertices, brainmask, affine, n_cpus, data, args.norm[0], cort_index, args.output[0] + "." + args.norm[0], nib_surf)
-
+            try:
+                result = vb.vb_hybrid(vertices, brainmask, affine, n_cpus, data, args.norm[0], cort_index, args.output[0] + "." + args.norm[0], nib_surf)
+            except Exception as error:
+                sys.stderr.write(str(error))
+                sys.exit(2)
+                quit()
         else:
             print("Running searchlight analysis")
             if args.mask is None:
@@ -171,8 +175,12 @@ def main():
             # Read labels
             _, labels = io.open_gifti(args.mask[0])
             cort_index = np.array(labels, np.bool)
-            result = vb.vb_index(vertices, faces, n_cpus, data, args.norm[0], cort_index, args.output[0] + "." + args.norm[0], nib_surf)
-
+            try:
+                result = vb.vb_index(vertices, faces, n_cpus, data, args.norm[0], cort_index, args.output[0] + "." + args.norm[0], nib_surf)
+            except Exception as error:
+                sys.stderr.write(str(error))
+                sys.exit(2)
+                quit()
     else:
         print("Running ROI analysis")
         if args.clusters is None:
@@ -181,7 +189,12 @@ def main():
             quit()
         nib, Z = io.open_gifti(args.clusters[0])
         Z = np.array(Z, dtype=np.int)
-        result = vb.vb_cluster(vertices, faces, n_cpus, data, Z, args.norm[0], args.output[0] + "." + args.norm[0], nib_surf)
+        try:
+            result = vb.vb_cluster(vertices, faces, n_cpus, data, Z, args.norm[0], args.output[0] + "." + args.norm[0], nib_surf)
+        except Exception as error:
+            sys.stderr.write(str(error))
+            sys.exit(2)
+            quit()
 
 
 if __name__ == "__main__":

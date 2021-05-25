@@ -9,6 +9,11 @@
 import numpy as np
 import scipy.linalg as spl
 import warnings
+import sys
+    
+class TimeSeriesTooShortError(Exception):
+    """Raised when the time series in the input data have less than three elements"""
+    pass
 
 def force_symmetric(M):
     """Force the symmetry of a given matrix.
@@ -215,23 +220,23 @@ def create_affinity_matrix(neighborhood, eps=np.finfo(float).eps, verbose=False)
     neighborhood = neighborhood.reshape(neighborhood_len, -1)
     # Here, the affinity matrix should have n_neighbors x data_size shape
     if neighborhood.shape[1] < 3:
-        neighborhood_scaled = neighborhood
-    else:
-        # Create a mean centered neighborhood
-        neighborhood_mean = np.mean(neighborhood, axis=-1)
-        neighborhood_mc = neighborhood - neighborhood_mean.reshape(-1, 1)
-        neighborhood_mc[np.abs(neighborhood_mc)<eps] = eps
+        raise TimeSeriesTooShortError("Time series have less than 3 entries. Your analysis will be compromised!\n")
 
-        if verbose:
-            print("neighborhood_mean")
-            print(neighborhood_mean)
+    # Create a mean centered neighborhood
+    neighborhood_mean = np.mean(neighborhood, axis=-1)
+    neighborhood_mc = neighborhood - neighborhood_mean.reshape(-1, 1)
+    neighborhood_mc[np.abs(neighborhood_mc)<eps] = eps
 
-            print("neighborhood_mc")
-            print(neighborhood_mc)
+    if verbose:
+        print("neighborhood_mean")
+        print(neighborhood_mean)
 
-        # Normalise the mean centered neighborhood
-        neighborhood_w = np.sqrt(np.sum(neighborhood_mc**2, axis=-1)).reshape(-1, 1)
-        neighborhood_scaled = neighborhood_mc/neighborhood_w
+        print("neighborhood_mc")
+        print(neighborhood_mc)
+
+    # Normalise the mean centered neighborhood
+    neighborhood_w = np.sqrt(np.sum(neighborhood_mc**2, axis=-1)).reshape(-1, 1)
+    neighborhood_scaled = neighborhood_mc/neighborhood_w
 
     affinity = np.dot(neighborhood_scaled, neighborhood_scaled.transpose())
     affinity[affinity > 1.0] = 1.0
