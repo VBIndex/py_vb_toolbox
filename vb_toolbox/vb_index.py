@@ -71,14 +71,13 @@ def vb_index_internal_loop(i0, iN, surf_faces, data, norm, print_progress=False)
 
             # Calculate the eigenvalues
             affinity = m.create_affinity_matrix(neighborhood)
-            _, _, _, eigenvalues, _ = m.spectral_reorder(affinity, norm)
-            normalisation_factor = np.average(eigenvalues[1:])
+            _, _, eigenvalue, _ = m.spectral_reorder(affinity, norm)
 
             # return [0]
             # Store the result of this run
-            loc_result[idx] = eigenvalues[1]/normalisation_factor
+            loc_result[idx] = eigenvalue
         except m.TimeSeriesTooShortError as error:
-            return error
+            raise error
         except Exception:
             loc_result[idx] = np.nan
 
@@ -131,24 +130,21 @@ def vb_index(surf_vertices, surf_faces, n_cpus, data, norm, cort_index, output_n
     pool = Pool(initializer = init, initargs = (counter, n_items))
 
     def callback(result):
-        if isinstance(result,Exception):
-            pool.close()
-            pool.terminate()
+        pool.close()
+        pool.terminate()
 
     # vb_index_internal_loop(0, n_items, surf_faces, data, norm)
     # Spawn the threads that are going to do the real work
     threads = []
     for i0 in range(0, n_items, dn):
         iN = min(i0+dn, n_items)
-        threads.append(pool.apply_async(vb_index_internal_loop, (i0, iN, surf_faces, data, norm),callback=callback))
+        threads.append(pool.apply_async(vb_index_internal_loop, (i0, iN, surf_faces, data, norm), error_callback=callback))
 
 
     # Gather the results from the threads we just spawned
     results = []
     for i, res in enumerate(threads):
         res_ = res.get()
-        if isinstance(res_,Exception):
-            raise res_
         for r in res_:
             results.append(r)
     results = np.array(results)
@@ -209,18 +205,18 @@ def vb_cluster_internal_loop(idx_cluster_0, idx_cluster_N, surf_faces, data, clu
             neighborhood = data[cluster_index == cluster_labels[i]]
 
             # Calculate the eigenvalues
+            # neighborhood = np.array([[1,2],[4,6],[-1,8]])
             affinity = m.create_affinity_matrix(neighborhood)
-            _, _, _, eigenvalues, eigenvectors = m.spectral_reorder(affinity, norm)
-            normalisation_factor = sum(eigenvalues)/len(eigenvalues-1)
+            _, _, eigenvalue, eigenvector = m.spectral_reorder(affinity, norm)
 
             # Store the result of this run
             # Warning: It is not true that the eigenvectors will be all the same
             # size, as the clusters might be of different sizes
-            val = eigenvalues[1]/normalisation_factor
-            vel = eigenvectors[:, 1]
+            val = eigenvalue
+            vel = eigenvector
             loc_result.append((val, vel))
         except m.TimeSeriesTooShortError as error:
-            return error
+            raise error
 
 
         if print_progress:
@@ -280,15 +276,14 @@ def vb_cluster(surf_vertices, surf_faces, n_cpus, data, cluster_index, norm, out
     pool = Pool(initializer = init, initargs = (counter, n_items))
 
     def callback(result):
-        if isinstance(result,Exception):
-            pool.close()
-            pool.terminate()
+        pool.close()
+        pool.terminate()
 
     # Spawn the threads that are going to do the real work
     threads = []
     for i0 in range(0, n_items, dn):
         iN = min(i0+dn, n_items)
-        threads.append(pool.apply_async(vb_cluster_internal_loop, (i0, iN, surf_faces, data, cluster_index, norm),callback=callback))
+        threads.append(pool.apply_async(vb_cluster_internal_loop, (i0, iN, surf_faces, data, cluster_index, norm), error_callback=callback))
 
 
     # Gather the results from the threads we just spawned
@@ -296,8 +291,6 @@ def vb_cluster(surf_vertices, surf_faces, n_cpus, data, cluster_index, norm, out
     results_eigenvectors_l = []
     for i, res in enumerate(threads):
         res_ = res.get()
-        if isinstance(res_,Exception):
-            raise res_
         for r, rv in res_:
             results.append(r)
             results_eigenvectors_l.append(rv)
@@ -387,17 +380,15 @@ def vb_hybrid_internal_loop(i0, iN, surf_vertices, brain_mask, data, norm, print
             if affinity.shape[0] > 3:
                 #tr_row, tr_col = np.triu_indices(affinity.shape[0], k=1)
             
-                _, _, _, eigenvalues, _ = m.spectral_reorder(affinity, norm)
-                normalisation_factor = np.average(eigenvalues[1:])
-
+                _, _, eigenvalue, _ = m.spectral_reorder(affinity, norm)
                 # return [0]
                 # Store the result of this run
-                loc_result[idx] = eigenvalues[1]/normalisation_factor
+                loc_result[idx] = eigenvalue
                 #loc_result[idx] = np.mean(affinity[tr_row, tr_col])
             else:
                 loc_result[idx] = np.nan
         except m.TimeSeriesTooShortError as error:
-            return error
+            raise error
         except Exception:
             traceback.print_exc()
             loc_result[idx] = np.nan
@@ -455,28 +446,25 @@ def vb_hybrid(surf_vertices, brain_mask, affine, n_cpus, data, norm, cort_index,
     pool = Pool(initializer = init, initargs = (counter, n_items))
 
     def callback(result):
-        if isinstance(result,Exception):
-            pool.close()
-            pool.terminate()
+        pool.close()
+        pool.terminate()
 
     # Spawn the threads that are going to do the real work
     threads = []
     for i0 in range(0, n_items, dn):
         iN = min(i0+dn, n_items)
-        threads.append(pool.apply_async(vb_hybrid_internal_loop, (i0, iN, vox_coords, brain_mask, data, norm),callback=callback))
+        threads.append(pool.apply_async(vb_hybrid_internal_loop, (i0, iN, vox_coords, brain_mask, data, norm), error_callback=callback))
 
 
     # Gather the results from the threads we just spawned
     results = []
     for i, res in enumerate(threads):
-       res_ = res.get()
-       if isinstance(res_,Exception):
-            raise res_
-       for r in res_:
+        res_ = res.get()
+        for r in res_:
             results.append(r)
     results = np.array(results)
     results[np.logical_not(cort_index)] = np.nan
-
+    
     # Save file
     if output_name is not None:
         io.save_gifti(nib_surf, results, output_name + ".vbi-hybrid.shape.gii")

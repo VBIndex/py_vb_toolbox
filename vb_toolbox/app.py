@@ -140,7 +140,12 @@ def main():
         _, labels = io.open_gifti(args.mask[0])
         cort_index = np.array(labels, np.bool)
         Z = np.array(cort_index, dtype=np.int)
-        result = vb.vb_cluster(vertices, faces, n_cpus, data, Z, args.norm[0], args.output[0] + "." + args.norm[0], nib_surf)
+        try:
+            result = vb.vb_cluster(vertices, faces, n_cpus, data, Z, args.norm[0], args.output[0] + "." + args.norm[0], nib_surf)
+        except Exception as error:
+            sys.stderr.write(str(error))
+            sys.exit(2)
+            quit()
 
     elif args.clusters is None:
         if args.hybrid:
