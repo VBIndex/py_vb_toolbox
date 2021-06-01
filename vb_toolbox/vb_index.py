@@ -35,15 +35,15 @@ def vb_index_internal_loop(i0, iN, surf_faces, data, norm, print_progress=False)
        i0: integer
            Index of first vertex to be analysed
        iN: integer
-           Index of last vertex to be analysed
+           iN - 1 is the index of the last vertex to be analysed
        surf_faces: (M, 3) numpy array
-           Faces of the mesh. Used to find the neighborhood of a given vertice
+           Faces of the mesh. Used to find the neighborhood of a given vertex
        data: (M, N) numpy array
-           Data to use the to calculate the VB index. M must math the number of vertices in the mesh
+           Data to use to calculate the VB index. M must match the number of vertices in the mesh
        norm: string
-             Method of reordering. Possibilities are 'geig', 'unnorm', 'rw' and 'sym'
+           Method of reordering. Possibilities are 'geig', 'unnorm', 'rw' and 'sym'
        print_progress: boolean
-             Print the current progress of the system
+           Print the current progress of the system
 
        Returns
        -------
@@ -69,7 +69,7 @@ def vb_index_internal_loop(i0, iN, surf_faces, data, norm, print_progress=False)
                 print("Warning: no neighborhood")
                 return [0]
 
-            # Calculate the eigenvalues
+            # Calculate the second smallest eigenvalue
             affinity = m.create_affinity_matrix(neighborhood)
             _, _, eigenvalue, _ = m.spectral_reorder(affinity, norm)
 
@@ -98,26 +98,26 @@ def vb_index(surf_vertices, surf_faces, n_cpus, data, norm, cort_index, output_n
        Parameters
        ----------
        surf_vertices: (M, 3) numpy array
-           Vertices of the mesh
+             Vertices of the mesh
        surf_faces: (M, 3) numpy array
-           Faces of the mesh. Used to find the neighborhood of a given vertice
+             Faces of the mesh. Used to find the neighborhood of a given vertex
        n_cpus: integer
-               How many CPUS to run the calculation
+             How many CPUS are available to run the calculation
        data: (M, N) numpy array
-           Data to use the to calculate the VB index. M must math the number of vertices in the mesh
+             Data to use to calculate the VB index. M must match the number of vertices in the mesh
        norm: string
              Method of reordering. Possibilities are 'geig', 'unnorm', 'rw' and 'sym'
        cort_index: (M) numpy array
-            Mask for detection of middle brain structures
+             Mask for detection of middle brain structures
        output_name: string
-            Root of file to save the results to. If specified, nib_surf must also be provided
-       nib_surf: Nibabel object
-            Nibabel object containing metadata to be replicated
+             Root of file to save the results to. If specified, nib_surf must also be provided
+       nib_surf: nibabel object
+             Nibabel object containing metadata to be replicated
 
        Returns
        -------
        result: (N) numpy array
-                   Resulting VB index of the indices in range
+               Resulting VB index of the indices in range
     """
 
     # Calculate how many vertices each process is going to be responsible for
@@ -162,33 +162,33 @@ def vb_index(surf_vertices, surf_faces, n_cpus, data, norm, cort_index, output_n
     return results
 
 def vb_cluster_internal_loop(idx_cluster_0, idx_cluster_N, surf_faces, data, cluster_index, norm, print_progress=False):
-    """Computes the Vogt-Bailey index of vertices of given clusters
+    """Computes the Vogt-Bailey index and Fiedler vector of vertices of given clusters
 
        Parameters
        ----------
        idx_cluster_0: integer
-           Number of first cluster to be analysed
+           Index of first cluster to be analysed
        idx_cluster_N: integer
-           Number of last cluster to be analysed
+           idx_cluster_N - 1 is the index of the last cluster to be analysed
        surf_faces: (M, 3) numpy array
-           Faces of the mesh. Used to find the neighborhood of a given vertice
+           Faces of the mesh. Used to find the neighborhood of a given vertex
        data: (M, N) numpy array
-           Data to use the to calculate the VB index. M must math the number of vertices in the mesh
+           Data to use to calculate the VB index and Fiedler vector. M must match the number of vertices in the mesh
        cluster_index: (M) numpy array
-           Array containing the cluster which each vertex belongs
+           Array containing the cluster which each vertex belongs to
        norm: string
-             Method of reordering. Possibilities are 'geig', 'unnorm', 'rw' and 'sym'
+           Method of reordering. Possibilities are 'geig', 'unnorm', 'rw' and 'sym'
        print_progress: boolean
-             Print the current progress of the system
+           Print the current progress of the system
 
        Returns
        -------
        loc_result: list of pairs of (float, (N) numpy array)
-                   Resulting VB index and eigenvectors of the clusters in range.
+                   Resulting VB index and Fiedler vector for each of the clusters in range
     """
 
 
-    # Calculate how many vertices we will compute
+    # Calculate how many clusters we will work with
     diff = idx_cluster_N - idx_cluster_0
     loc_result = []
     cluster_labels = np.unique(cluster_index)
@@ -204,8 +204,7 @@ def vb_cluster_internal_loop(idx_cluster_0, idx_cluster_N, surf_faces, data, clu
             # Get neighborhood and its data
             neighborhood = data[cluster_index == cluster_labels[i]]
 
-            # Calculate the eigenvalues
-            # neighborhood = np.array([[1,2],[4,6],[-1,8]])
+            # Calculate the Fiedler eigenpair
             affinity = m.create_affinity_matrix(neighborhood)
             _, _, eigenvalue, eigenvector = m.spectral_reorder(affinity, norm)
 
@@ -231,42 +230,42 @@ def vb_cluster_internal_loop(idx_cluster_0, idx_cluster_N, surf_faces, data, clu
     return loc_result
 
 def vb_cluster(surf_vertices, surf_faces, n_cpus, data, cluster_index, norm, output_name = None, nib_surf=None):
-    """Computes the clustered Vogt-Bailey index of vertices for the whole mesh
+    """Computes the clustered Vogt-Bailey index and Fiedler vector of vertices for the whole mesh
 
        Parameters
        ----------
        surf_vertices: (M, 3) numpy array
            Vertices of the mesh
        surf_faces: (M, 3) numpy array
-           Faces of the mesh. Used to find the neighborhood of a given vertice
+           Faces of the mesh. Used to find the neighborhood of a given vertex
        n_cpus: integer
-               How many CPUS to run the calculation
+           How many CPUS are available to run the calculation
        data: (M, N) numpy array
-           Data to use the to calculate the VB index. M must math the number of vertices in the mesh
+           Data to use to calculate the VB index and Fiedler vector. M must match the number of vertices in the mesh
        cluster_index: (M) numpy array
-           Array containing the cluster which each vertex belongs
+           Array containing the cluster which each vertex belongs to
        norm: string
-             Method of reordering. Possibilities are 'geig', 'unnorm', 'rw' and 'sym'
+           Method of reordering. Possibilities are 'geig', 'unnorm', 'rw' and 'sym'
        cort_index: (M) numpy array
-            Mask for detection of middle brain structures
+           Mask for detection of middle brain structures
        output_name: string
-            Root of file to save the results to. If specified, nib_surf must also be provided
-       nib_surf: Nibabel object
-            Nibabel object containing metadata to be replicated
+           Root of file to save the results to. If specified, nib_surf must also be provided
+       nib_surf: nibabel object
+           Nibabel object containing metadata to be replicated
 
        Returns
        -------
        results_eigenvalues: (M) numpy array
                             Resulting VB index of the clusters
        results_eigenvectors: (M, N) numpy array
-                            Resuling Fiedler vectors of the clusters
+                            Resulting Fiedler vectors of the clusters
     """
 
     # Find the cluster indices, and the midbrain structures
     cluster_labels = np.unique(cluster_index)
     midline_index = cluster_index == 0
 
-    # Calculate how many vertices each process is going to be responsible for
+    # Calculate how many clusters each process is going to be responsible for
     n_items = len(cluster_labels)
     n_cpus = min(n_items, n_cpus)
     dn = n_items//(n_cpus)
@@ -296,7 +295,7 @@ def vb_cluster(surf_vertices, surf_faces, n_cpus, data, cluster_index, norm, out
             results_eigenvectors_l.append(rv)
     results = np.array(results)
 
-    # Now we need to push the data back into the original vertices
+    # Now we need to push the data back to the original vertices
     results_eigenvalues = np.zeros(len(surf_vertices))
     results_eigenvectors = []
     for i in range(n_items):
@@ -327,7 +326,7 @@ def vb_cluster(surf_vertices, surf_faces, n_cpus, data, cluster_index, norm, out
     return results_eigenvalues, results_eigenvectors
 	
 def get_neighborhood(data,p,mask,n=1):
-    """Get neighbors in volumetric space given a vertex coordinates"""
+    """Get neighbors in volumetric space given the coordinates of a vertex"""
     neigh_coords = np.array([relative_index for relative_index in product((-1, 0, 1), repeat=3)])+p
     neigh_coords = neigh_coords.astype(int)
     masked_neigh = np.where(mask[neigh_coords[:,0],neigh_coords[:,1], neigh_coords[:,2]])[0]
@@ -342,17 +341,17 @@ def vb_hybrid_internal_loop(i0, iN, surf_vertices, brain_mask, data, norm, print
        i0: integer
            Index of first vertex to be analysed
        iN: integer
-           Index of last vertex to be analysed
+           iN - 1 is the index of the last vertex to be analysed
        surf_vertices: (M, 3) numpy array
-           Coords of vertices of the mesh in voxel space
+           Coordinates of vertices of the mesh in voxel space
        brain_mask: (nRows, nCols, nSlices) numpy array
-           Whole brain mask. Used to mask volumetric data.
+           Whole brain mask. Used to mask volumetric data
        data: (M, N) numpy array
-           Data to use the to calculate the VB index. M must math the number of vertices in the mesh
+           Data to use to calculate the VB index. M must match the number of vertices in the mesh
        norm: string
-             Method of reordering. Possibilities are 'geig', 'unnorm', 'rw' and 'sym'
+           Method of reordering. Possibilities are 'geig', 'unnorm', 'rw' and 'sym'
        print_progress: boolean
-             Print the current progress of the system
+           Print the current progress of the system
 
        Returns
        -------
@@ -368,18 +367,19 @@ def vb_hybrid_internal_loop(i0, iN, surf_vertices, brain_mask, data, norm, print
         i = idx + i0
 
         # Get neighborhood and its data
+        print(data.shape)
         try:
             neighborhood = get_neighborhood(data,surf_vertices[i,:],brain_mask)
             if len(neighborhood) == 0:
                 print("Warning: no neighborhood")
                 loc_result[idx] = np.nan
                 continue
-            # Calculate the eigenvalues
             affinity = m.create_affinity_matrix(neighborhood)
             
             if affinity.shape[0] > 3:
                 #tr_row, tr_col = np.triu_indices(affinity.shape[0], k=1)
             
+                # Calculate the second smallest eigenvalue
                 _, _, eigenvalue, _ = m.spectral_reorder(affinity, norm)
                 # return [0]
                 # Store the result of this run
@@ -413,24 +413,24 @@ def vb_hybrid(surf_vertices, brain_mask, affine, n_cpus, data, norm, cort_index,
        surf_vertices: (M, 3) numpy array
            Vertices of the mesh
        brain_mask: (nRows, nCols, nSlices) numpy array
-           Whole brain mask. Used to mask volumetric data.
+           Whole brain mask. Used to mask volumetric data
        n_cpus: integer
-               How many CPUS to run the calcualation
+           How many CPUS are available to run the calculation
        data: (nRows, nCols, nSlices, N) numpy array
            Volumetric data used to calculate the VB index. N is the number of maps
        norm: string
-             Method of reordering. Possibilities are 'geig', 'unnorm', 'rw' and 'sym'
+           Method of reordering. Possibilities are 'geig', 'unnorm', 'rw' and 'sym'
        cort_index: (M) numpy array
-            Mask for detection of middle brain structures
+           Mask for detection of middle brain structures
        output_name: string
-            Root of file to save the results to. If specified, nib_surf must also be provided
-       nib_surf: Nibabel object
-            Nibabel object containing metadata to be replicated
+           Root of file to save the results to. If specified, nib_surf must also be provided
+       nib_surf: nibabel object
+           Nibabel object containing metadata to be replicated
 
        Returns
        -------
        result: (N) numpy array
-                   Resulting VB index of the indices in range
+               Resulting VB index of the indices in range
     """
 
     # Convert vertex coordinates to voxel coordinates

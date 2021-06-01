@@ -44,8 +44,9 @@ def solve_general_eigenproblem(Q, D=None, is_symmetric=True):
     """Solve the general eigenproblem.
 
     Solves the general eigenproblem Qx = lambda*Dx. The eigenvectors returned are
-    unitary in the norm induced by the matrix D, and are sorted in order of increasing
-    eigenvalues. If D is not set, the identity matrix is assumed.
+    unitary in the norm induced by the matrix D. The eigenvalues are sorted in
+    ascending order, with the eigenvectors sorted accordingly. If D is not set, 
+    the identity matrix is assumed.
 
     Parameters
     ----------
@@ -54,16 +55,16 @@ def solve_general_eigenproblem(Q, D=None, is_symmetric=True):
        Main matrix
     D: (M, M) numpy array
        Numpy array with matrix. If not set, this function will solve the
-       standard eigenproblem (Qx = lambda*x).
+       standard eigenproblem (Qx = lambda*x)
     is_symmetric: boolean
-                  Indicates whether Q *and* D are symmetric.
-                  If set, the program will use a much faster, but less general,
+                  Indicates whether Q *and* D are symmetric. If set, the 
+                  program will use a much faster, but less general,
                   algorithm
 
     Returns
     -------
-    eigenvalues: Numpy array with eigenvalues
-    eigenvectors: Numpy array with eigenvectors.
+    eigenvalues: numpy array with eigenvalues
+    eigenvectors: numpy array with eigenvectors
                   Note: The matrix is transposed in relation to standard Numpy
     """
 
@@ -91,8 +92,7 @@ def solve_general_eigenproblem(Q, D=None, is_symmetric=True):
 
     # As a general recap. According to the scipy documentation,
     # A   vr[:,i] = w[i] B vr[:,i]
-    # That is, the index of the eigenvector is on the second index,
-    # while the entry is in the first index.
+    # That is, the index of the eigenvector is the second index.
     # Thus, when we need to sort the eigenvectors, we only need to
     # sort in the second index.
    
@@ -117,19 +117,20 @@ def get_fiedler_eigenpair(Q, D=None, is_symmetric=True):
     ----------
 
     Q: (M, M) numpy array
-        Main matrix
+       Main matrix
     D: (M, M) numpy array
-        Matrix that accounts for node degree bias. If not set, this function will solve the
-        standard eigenproblem (Qx = lambda*x).
+       Matrix that accounts for node degree bias. If not set, this function will solve the
+       standard eigenproblem (Qx = lambda*x)
     is_symmetric: boolean
-                  Indicates whether Q *and* D are symmetric.
-                  If set, the program will use a much faster, but less general,
-                  algorithm
+                  Indicates whether Q *and* D are symmetric. If set, the program will use a 
+                  much faster, but less general, algorithm
 
     Returns
     -------
-    second_smallest_eigval: the second smallest eigenvalue
-    fiedler_vector: the corresponding eigenvector
+    2nd_smallest_eigval: floating-point number
+                         The second smallest eigenvalue
+    fiedler_vector: (M) numpy array
+                    The Fiedler vector
     """
     
     if D is None:
@@ -148,13 +149,14 @@ def get_fiedler_eigenpair(Q, D=None, is_symmetric=True):
     sort_eigen = np.argsort(eigenvalues)
     eigenvalues = eigenvalues[sort_eigen]
     normalisation_factor = np.average(eigenvalues[1:])
-    second_smallest_eigval = eigenvalues[1]/normalisation_factor
+    2nd_smallest_eigval = eigenvalues[1]/normalisation_factor
     
     fiedler_vector = eigenvectors[:, sort_eigen[1]]
     n = np.matmul(fiedler_vector.transpose(), np.matmul(Y, fiedler_vector))
     fiedler_vector = fiedler_vector/np.sqrt(n)
+    print(fiedler_vector.shape)
 
-    return second_smallest_eigval, fiedler_vector
+    return 2nd_smallest_eigval, fiedler_vector
     
 
 def spectral_reorder(B, method = 'geig'):
@@ -163,7 +165,7 @@ def spectral_reorder(B, method = 'geig'):
     Parameters
     ----------
     B: (M, M) array_like
-       Square matrix to be reordered.
+       Square matrix to be reordered
     method: string
             Method of reordering. Possibilities are 'geig', 'unnorm', 'rw' and 'sym'
 
@@ -173,12 +175,10 @@ def spectral_reorder(B, method = 'geig'):
               Reordered matrix
     sort_idx: (M) numpy array
               Reordering mask applied to B
-    v2      : (M) numpy array
-              Fiedler vector
-    eigenvalues: (M) numpy array
-                  Eigenvalues of B
-    eigenvectors: (M,M) numpy array
-                  Eigenvectors of B
+    eigenvalue: floating-point number
+                Second-smallest eigenvalue
+    eigenvector: (M) numpy array
+                 The Fiedler vector
     """
 
     # Fix the input
@@ -199,10 +199,10 @@ def spectral_reorder(B, method = 'geig'):
     # Actual decomposition
 
     # create the laplacian matrix (Q).
-    # For all non diagonal elements, populate matrix Q with the negative
-    # value of matrix C
-    # For all the diagonal element, sum across the rows (excluding the
-    # diagonal element) and populate the diagonal of Q with that sum
+    # For all non-diagonal elements, populate matrix Q with (minus) the corresponding
+    # values of matrix C (i.e. Q[i,j] = -C[i,j]).
+    # For each diagonal element Q[i,i], sum across the corresponding row of C (excluding the
+    # diagonal element C[i,i]) and set Q[i,i] equal to that sum. 
 
     triuC = np.triu(C,1) # Extract upper triangular elements;
     C = triuC + triuC.transpose() # Reconstruct a symmetric weighted adjacency matrix eliminating possible small errors in off-diagonal elements
@@ -226,7 +226,7 @@ def spectral_reorder(B, method = 'geig'):
         L = force_symmetric(L) # Force symmetry
 
         eigenvalue, eigenvector = get_fiedler_eigenpair(L)
-        eigenvector = spl.solve(T, eigenvector) # automatically normalized (i.e.eigenvector.transpose() @ (D @ eigenvector) = 1)
+        eigenvector = spl.solve(T, eigenvector) # automatically normalized (i.e. eigenvector.transpose() @ (D @ eigenvector) = 1)
 
     elif method == 'rw':
         # Method using eigen decomposition of Random Walk Normalised Laplacian
@@ -269,9 +269,8 @@ def create_affinity_matrix(neighborhood, eps=np.finfo(float).eps, verbose=False)
     affinity: (M, M) numpy array
               Affinity matrix of the neighborhood
     """
-    # The following two lines are necessary for when neighborhood is a 1D array, in 
-    # which case neighborhood.shape[0] returns the number of elements in the array, 
-    # not the number of rows.
+    # The following two lines are necessary for when neighborhood is an (M,) array (i.e. it is 1D), in 
+    # which case it is converted to an (M,1) array. 
     neighborhood_len = neighborhood.shape[0]
     neighborhood = neighborhood.reshape(neighborhood_len, -1)
     # Here, the affinity matrix should have n_neighbors x data_size shape
