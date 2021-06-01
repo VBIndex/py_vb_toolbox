@@ -367,7 +367,7 @@ def vb_hybrid_internal_loop(i0, iN, surf_vertices, brain_mask, data, norm, print
         i = idx + i0
 
         # Get neighborhood and its data
-        print(data.shape)
+        # print(data.shape)
         try:
             neighborhood = get_neighborhood(data,surf_vertices[i,:],brain_mask)
             if len(neighborhood) == 0:

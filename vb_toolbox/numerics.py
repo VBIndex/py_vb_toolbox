@@ -127,7 +127,7 @@ def get_fiedler_eigenpair(Q, D=None, is_symmetric=True):
 
     Returns
     -------
-    2nd_smallest_eigval: floating-point number
+    second_smallest_eigval: floating-point number
                          The second smallest eigenvalue
     fiedler_vector: (M) numpy array
                     The Fiedler vector
@@ -149,14 +149,13 @@ def get_fiedler_eigenpair(Q, D=None, is_symmetric=True):
     sort_eigen = np.argsort(eigenvalues)
     eigenvalues = eigenvalues[sort_eigen]
     normalisation_factor = np.average(eigenvalues[1:])
-    2nd_smallest_eigval = eigenvalues[1]/normalisation_factor
+    second_smallest_eigval = eigenvalues[1]/normalisation_factor
     
     fiedler_vector = eigenvectors[:, sort_eigen[1]]
     n = np.matmul(fiedler_vector.transpose(), np.matmul(Y, fiedler_vector))
     fiedler_vector = fiedler_vector/np.sqrt(n)
-    print(fiedler_vector.shape)
 
-    return 2nd_smallest_eigval, fiedler_vector
+    return second_smallest_eigval, fiedler_vector
     
 
 def spectral_reorder(B, method = 'geig'):
