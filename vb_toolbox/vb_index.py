@@ -119,7 +119,7 @@ def vb_index(surf_vertices, surf_faces, n_cpus, data, norm, cort_index, output_n
        result: (N) numpy array
                Resulting VB index of the indices in range
     """
-
+    
     # Calculate how many vertices each process is going to be responsible for
     n_items = len(surf_vertices)
     n_cpus = min(n_items, n_cpus)
@@ -186,7 +186,6 @@ def vb_cluster_internal_loop(idx_cluster_0, idx_cluster_N, surf_faces, data, clu
        loc_result: list of pairs of (float, (N) numpy array)
                    Resulting VB index and Fiedler vector for each of the clusters in range
     """
-
 
     # Calculate how many clusters we will work with
     diff = idx_cluster_N - idx_cluster_0
@@ -358,6 +357,7 @@ def vb_hybrid_internal_loop(i0, iN, surf_vertices, brain_mask, data, norm, print
        loc_result: (N) numpy array
                    Resulting VB index of the indices in range. Will have length iN - i0
     """
+    
     # Calculate how many vertices we will compute
     diff = iN - i0
     loc_result = np.zeros(diff)
@@ -432,7 +432,7 @@ def vb_hybrid(surf_vertices, brain_mask, affine, n_cpus, data, norm, cort_index,
        result: (N) numpy array
                Resulting VB index of the indices in range
     """
-
+    
     # Convert vertex coordinates to voxel coordinates
     vox_coords = np.round(nibabel.affines.apply_affine(np.linalg.inv(affine),surf_vertices))
 
