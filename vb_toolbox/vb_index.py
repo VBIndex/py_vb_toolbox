@@ -345,8 +345,8 @@ def vb_hybrid_internal_loop(i0, iN, surf_vertices, brain_mask, data, norm, print
            Coordinates of vertices of the mesh in voxel space
        brain_mask: (nRows, nCols, nSlices) numpy array
            Whole brain mask. Used to mask volumetric data
-       data: (M, N) numpy array
-           Data to use to calculate the VB index. M must match the number of vertices in the mesh
+       data: (nRows, nCols, nSlices, N) numpy array
+           Volumetric data used to calculate the VB index. N is the number of maps
        norm: string
            Method of reordering. Possibilities are 'geig', 'unnorm', 'rw' and 'sym'
        print_progress: boolean
