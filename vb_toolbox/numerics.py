@@ -67,28 +67,24 @@ def solve_general_eigenproblem(Q, D=None, is_symmetric=True):
     eigenvectors: numpy array with eigenvectors
                   Note: The matrix is transposed in relation to standard Numpy
     """
-
-    if D is None:
-        Y = np.identity(Q.shape[0])
-    else:
-        Y = D
         
     # By default, spl.eig returns eigenvectors normalised according to the Frobenius
     # norm, while Matlab (and spl.eigh) returns them normalised by the norm induced by D.
     # We convert to the Matlab version for easier comparison.
 
     if is_symmetric:
-        eigenvalues, eigenvectors = spl.eigh(Q, Y, check_finite=False)
-        eigenvalues = np.real(eigenvalues)
-        eigenvectors = np.real(eigenvectors)
+        eigenvalues, eigenvectors = spl.eigh(Q, D, check_finite=False)
     else:
-        eigenvalues, eigenvectors = spl.eig(Q, Y, check_finite=False)
-        eigenvalues = np.real(eigenvalues)
-        eigenvectors = np.real(eigenvectors)
+        eigenvalues, eigenvectors = spl.eig(Q, D, check_finite=False)
+        
+    eigenvalues = np.real(eigenvalues)
+    eigenvectors = np.real(eigenvectors)
+    
+    if (is_symmetric == False) and (D is not None):
         for i in range(eigenvectors.shape[1]):
-           e = eigenvectors[:, i]
-           n = np.matmul(e.transpose(), np.matmul(Y, e))
-           eigenvectors[:, i] = e/np.sqrt(n)
+            e = eigenvectors[:, i]
+            n = np.matmul(e.transpose(), np.matmul(D, e))
+            eigenvectors[:, i] = e/np.sqrt(n)
 
     # As a general recap. According to the scipy documentation,
     # A   vr[:,i] = w[i] B vr[:,i]
@@ -133,15 +129,10 @@ def get_fiedler_eigenpair(Q, D=None, is_symmetric=True):
                     The Fiedler vector
     """
     
-    if D is None:
-        Y = np.identity(Q.shape[0])
-    else:
-        Y = D
-
     if is_symmetric:
-        eigenvalues, eigenvectors = spl.eigh(Q, Y, check_finite=False)
+        eigenvalues, eigenvectors = spl.eigh(Q, D, check_finite=False)
     else:
-        eigenvalues, eigenvectors = spl.eig(Q, Y, check_finite=False)
+        eigenvalues, eigenvectors = spl.eig(Q, D, check_finite=False)
         
     eigenvalues = np.real(eigenvalues)
     eigenvectors = np.real(eigenvectors)
@@ -152,8 +143,9 @@ def get_fiedler_eigenpair(Q, D=None, is_symmetric=True):
     second_smallest_eigval = eigenvalues[1]/normalisation_factor
     
     fiedler_vector = eigenvectors[:, sort_eigen[1]]
-    n = np.matmul(fiedler_vector.transpose(), np.matmul(Y, fiedler_vector))
-    fiedler_vector = fiedler_vector/np.sqrt(n)
+    if (is_symmetric == False) and (D is not None):
+        n = np.matmul(fiedler_vector.transpose(), np.matmul(D, fiedler_vector))
+        fiedler_vector = fiedler_vector/np.sqrt(n)
 
     return second_smallest_eigval, fiedler_vector
     
