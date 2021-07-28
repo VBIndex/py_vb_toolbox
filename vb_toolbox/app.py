@@ -56,7 +56,7 @@ def create_parser():
                         "sym". Defaults to geig.""")
 
     parser.add_argument('-fb', '--full-brain', action='store_true',
-                        help="""Calculate full brain feature gradient analyses.""")
+                        help="""Calculate full brain feature gradient analysis.""")
 
     parser.add_argument('-hy', '--hybrid', action='store_true',
                         help="""Calculate VB index with hybrid approach.""")
@@ -69,7 +69,7 @@ def create_parser():
                                nargs=1, help="""File containing the labels to
                                identify the cortex, rather than the medial
                                brain structures. This flag must be set for
-                               normal analyses and full brain analyses.""")
+                               normal analysis and full brain analysis.""")
 
     parser.add_argument('-c', '--clusters', metavar='file', type=str, nargs=1, default=None,
                         help="""File containing the surface clusters. Cluster
@@ -131,7 +131,7 @@ def main():
             data = nib.darrays[0].data
 
     if args.full_brain:
-        print("Running full brain analyses")
+        print("Running full brain analysis")
         if args.mask is None:
             sys.stderr.write("A mask file must be provided through the --mask flag. See --help")
             sys.exit(2)
@@ -140,11 +140,16 @@ def main():
         _, labels = io.open_gifti(args.mask[0])
         cort_index = np.array(labels, np.bool)
         Z = np.array(cort_index, dtype=np.int)
-        result = vb.vb_cluster(vertices, faces, n_cpus, data, Z, args.norm[0], args.output[0] + "." + args.norm[0], nib_surf)
+        try:
+            result = vb.vb_cluster(vertices, faces, n_cpus, data, Z, args.norm[0], args.output[0] + "." + args.norm[0], nib_surf)
+        except Exception as error:
+            sys.stderr.write(str(error))
+            sys.exit(2)
+            quit()
 
     elif args.clusters is None:
         if args.hybrid:
-            print("Running searchlight analyses with hybrid approach")
+            print("Running searchlight analysis with hybrid approach")
             if args.mask is None:
                 sys.stderr.write("A mask file must be provided through the --mask flag. See --help")
                 sys.exit(2)
@@ -160,10 +165,14 @@ def main():
             # Read brain mask
             brainmask = nibabel.load(args.volmask[0])
             brainmask = np.array(brainmask.dataobj)
-            result = vb.vb_hybrid(vertices, brainmask, affine, n_cpus, data, args.norm[0], cort_index, args.output[0] + "." + args.norm[0], nib_surf)
-
+            try:
+                result = vb.vb_hybrid(vertices, brainmask, affine, n_cpus, data, args.norm[0], cort_index, args.output[0] + "." + args.norm[0], nib_surf)
+            except Exception as error:
+                sys.stderr.write(str(error))
+                sys.exit(2)
+                quit()
         else:
-            print("Running searchlight analyses")
+            print("Running searchlight analysis")
             if args.mask is None:
                 sys.stderr.write("A mask file must be provided through the --mask flag. See --help")
                 sys.exit(2)
@@ -171,17 +180,26 @@ def main():
             # Read labels
             _, labels = io.open_gifti(args.mask[0])
             cort_index = np.array(labels, np.bool)
-            result = vb.vb_index(vertices, faces, n_cpus, data, args.norm[0], cort_index, args.output[0] + "." + args.norm[0], nib_surf)
-
+            try:
+                result = vb.vb_index(vertices, faces, n_cpus, data, args.norm[0], cort_index, args.output[0] + "." + args.norm[0], nib_surf)
+            except Exception as error:
+                sys.stderr.write(str(error))
+                sys.exit(2)
+                quit()
     else:
-        print("Running ROI analyses")
+        print("Running ROI analysis")
         if args.clusters is None:
             sys.stderr.write("A cluster file must be provided through the --clusters flag. See --help")
             sys.exit(2)
             quit()
         nib, Z = io.open_gifti(args.clusters[0])
         Z = np.array(Z, dtype=np.int)
-        result = vb.vb_cluster(vertices, faces, n_cpus, data, Z, args.norm[0], args.output[0] + "." + args.norm[0], nib_surf)
+        try:
+            result = vb.vb_cluster(vertices, faces, n_cpus, data, Z, args.norm[0], args.output[0] + "." + args.norm[0], nib_surf)
+        except Exception as error:
+            sys.stderr.write(str(error))
+            sys.exit(2)
+            quit()
 
 
 if __name__ == "__main__":
