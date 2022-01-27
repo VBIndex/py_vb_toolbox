@@ -48,7 +48,7 @@ def create_parser():
     parser.add_argument('-j', '--jobs', metavar='N', type=int, nargs=1,
                         default=[multiprocessing.cpu_count()], help="""Maximum
                         number of jobs to be used. If abscent, one job per CPU
-                        will be spawned""")
+                        will be spawned.""")
 
     parser.add_argument('-n', '--norm', metavar='norm', type=str, nargs=1,
                         default=["geig"], help="""Laplacian normalization to be
@@ -63,7 +63,7 @@ def create_parser():
 
     parser.add_argument('-vm', '--volmask', metavar='file', type=str,
                                nargs=1, default=None, help="""Nifti file containing the whole brain mask
-                               in volumetric space. This flag must be set if computing hybrid VB""")
+                               in volumetric space. This flag must be set if computing hybrid VB.""")
 
     parser.add_argument('-m', '--mask', metavar='file', type=str,
                                nargs=1, help="""File containing the labels to
@@ -75,21 +75,28 @@ def create_parser():
                         help="""File containing the surface clusters. Cluster
                         with index 0 are expected to denote the medial brain
                         structures and will be ignored.""")
+                        
+    parser.add_argument('-t', '--tol', metavar='tolerance', type=float, nargs=1,
+                        default=["def_tol"], help="""Residual tolerance (stopping criterion) for LOBPCG. 
+                        Default value = sqrt(10e-18)*n, where n is the number of nodes per graph.""")
+                        
+    parser.add_argument('-mi', '--maxiter', metavar='max iterations', type=int, nargs=1, default=[50],
+                        help="""Maximum number of iterations for LOBPCG. Defaults to 50.""")
 
     requiredNamed = parser.add_argument_group('required named arguments')
 
     requiredNamed.add_argument('-s', '--surface', metavar='file', type=str,
                                nargs=1, help="""File containing the surface
-                                              mesh""", required=True)
+                                              mesh.""", required=True)
 
     requiredNamed.add_argument('-d', '--data', metavar='file', type=str,
                                nargs=1, help="""File containing the data over
-                                              the surface (or volume if hybrid)""", required=True)
+                                              the surface (or volume if hybrid).""", required=True)
 
 
     requiredNamed.add_argument('-o', '--output', metavar='file', type=str,
                                nargs=1, help="""Base name for the
-                                              output files""", required=True)
+                                              output files.""", required=True)
 
     return parser
 
@@ -141,7 +148,7 @@ def main():
         cort_index = np.array(labels, np.bool)
         Z = np.array(cort_index, dtype=np.int)
         try:
-            result = vb.vb_cluster(vertices, faces, n_cpus, data, Z, args.norm[0], args.output[0] + "." + args.norm[0], nib_surf)
+            result = vb.vb_cluster(vertices, faces, n_cpus, data, Z, args.norm[0], args.tol[0], args.maxiter[0], args.output[0] + "." + args.norm[0], nib_surf)
         except Exception as error:
             sys.stderr.write(str(error))
             sys.exit(2)
@@ -166,7 +173,7 @@ def main():
             brainmask = nibabel.load(args.volmask[0])
             brainmask = np.array(brainmask.dataobj)
             try:
-                result = vb.vb_hybrid(vertices, brainmask, affine, n_cpus, data, args.norm[0], cort_index, args.output[0] + "." + args.norm[0], nib_surf)
+                result = vb.vb_hybrid(vertices, brainmask, affine, n_cpus, data, args.norm[0], cort_index, args.tol[0], args.maxiter[0], args.output[0] + "." + args.norm[0], nib_surf)
             except Exception as error:
                 sys.stderr.write(str(error))
                 sys.exit(2)
@@ -181,7 +188,7 @@ def main():
             _, labels = io.open_gifti(args.mask[0])
             cort_index = np.array(labels, np.bool)
             try:
-                result = vb.vb_index(vertices, faces, n_cpus, data, args.norm[0], cort_index, args.output[0] + "." + args.norm[0], nib_surf)
+                result = vb.vb_index(vertices, faces, n_cpus, data, args.norm[0], cort_index, args.tol[0], args.maxiter[0], args.output[0] + "." + args.norm[0], nib_surf)
             except Exception as error:
                 sys.stderr.write(str(error))
                 sys.exit(2)
@@ -195,7 +202,7 @@ def main():
         nib, Z = io.open_gifti(args.clusters[0])
         Z = np.array(Z, dtype=np.int)
         try:
-            result = vb.vb_cluster(vertices, faces, n_cpus, data, Z, args.norm[0], args.output[0] + "." + args.norm[0], nib_surf)
+            result = vb.vb_cluster(vertices, faces, n_cpus, data, Z, args.norm[0], args.tol[0], args.maxiter[0], args.output[0] + "." + args.norm[0], nib_surf)
         except Exception as error:
             sys.stderr.write(str(error))
             sys.exit(2)
