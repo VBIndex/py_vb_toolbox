@@ -61,10 +61,6 @@ def create_parser():
     parser.add_argument('-hy', '--hybrid', action='store_true',
                         help="""Calculate VB index with hybrid approach.""")
 
-    parser.add_argument('-vm', '--volmask', metavar='file', type=str,
-                               nargs=1, default=None, help="""Nifti file containing the whole brain mask
-                               in volumetric space. This flag must be set if computing hybrid VB.""")
-
     parser.add_argument('-m', '--mask', metavar='file', type=str,
                                nargs=1, help="""File containing the labels to
                                identify the cortex, rather than the medial
@@ -145,7 +141,7 @@ def main():
             quit()
         # Read labels
         _, labels = io.open_gifti(args.mask[0])
-        cort_index = np.array(labels, np.bool)
+        cort_index = np.array(labels, bool)
         Z = np.array(cort_index, dtype=np.int)
         try:
             result = vb.vb_cluster(vertices, faces, n_cpus, data, Z, args.norm[0], args.tol[0], args.maxiter[0], args.output[0] + "." + args.norm[0], nib_surf)
@@ -161,19 +157,13 @@ def main():
                 sys.stderr.write("A mask file must be provided through the --mask flag. See --help")
                 sys.exit(2)
                 quit()
-            if args.volmask is None:
-                sys.stderr.write("A volumetric mask file must be provided through the --volmask flag. See --help")
-                sys.exit(2)
-                quit()
           
             # Read labels
             _, labels = io.open_gifti(args.mask[0])
-            cort_index = np.array(labels, np.bool)
+            cort_index = np.array(labels, bool)
             # Read brain mask
-            brainmask = nibabel.load(args.volmask[0])
-            brainmask = np.array(brainmask.dataobj)
             try:
-                result = vb.vb_hybrid(vertices, brainmask, affine, n_cpus, data, args.norm[0], cort_index, args.tol[0], args.maxiter[0], args.output[0] + "." + args.norm[0], nib_surf)
+                result = vb.vb_hybrid(vertices, faces, affine, n_cpus, data, args.norm[0], cort_index, args.tol[0], args.maxiter[0], args.output[0] + "." + args.norm[0], nib_surf, k=3)
             except Exception as error:
                 sys.stderr.write(str(error))
                 sys.exit(2)
@@ -186,7 +176,7 @@ def main():
                 quit()
             # Read labels
             _, labels = io.open_gifti(args.mask[0])
-            cort_index = np.array(labels, np.bool)
+            cort_index = np.array(labels, bool)
             try:
                 result = vb.vb_index(vertices, faces, n_cpus, data, args.norm[0], cort_index, args.tol[0], args.maxiter[0], args.output[0] + "." + args.norm[0], nib_surf)
             except Exception as error:

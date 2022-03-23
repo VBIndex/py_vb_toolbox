@@ -62,12 +62,13 @@ def vb_index_internal_loop(i0, iN, surf_faces, data, norm, residual_tolerance, m
         # Get neighborhood and its data
         # TODO: Make this elegant
         try:
-            neighbour_idx = np.array(np.sum(surf_faces == i, 1), np.bool)
-            I = np.unique(surf_faces[neighbour_idx, :])
+            neighbor_idx = np.array(np.sum(surf_faces == i, 1), np.bool)
+            I = np.unique(surf_faces[neighbor_idx, :])
             neighborhood = data[I]
             if len(neighborhood) == 0:
                 print("Warning: no neighborhood")
-                return [0]
+                loc_result[idx] = np.nan
+                continue
 
             # Calculate the second smallest eigenvalue
             affinity = m.create_affinity_matrix(neighborhood)
@@ -324,15 +325,34 @@ def vb_cluster(surf_vertices, surf_faces, n_cpus, data, cluster_index, norm, res
 
     return results_eigenvalues, results_eigenvectors
 	
-def get_neighborhood(data,p,mask,n=1):
+def get_neighborhood(data, surf_vertices, surf_faces, i, affine, k=3):
     """Get neighbors in volumetric space given the coordinates of a vertex"""
-    neigh_coords = np.array([relative_index for relative_index in product((-1, 0, 1), repeat=3)])+p
-    neigh_coords = neigh_coords.astype(int)
-    masked_neigh = np.where(mask[neigh_coords[:,0],neigh_coords[:,1], neigh_coords[:,2]])[0]
+    neighbor_idx = np.array(np.sum(surf_faces == i, 1), np.bool)
+    I = np.unique(surf_faces[neighbor_idx, :])
+    new_v = np.array([surf_vertices[i]+(surf_vertices[j]-surf_vertices[i])*p/k for p in range(1,k)
+                      for j in np.setdiff1d(I,i)])
+    dense_neigh = np.vstack([surf_vertices[I],new_v])
+    neigh_coords = np.round(nibabel.affines.apply_affine(spl.inv(affine),dense_neigh)).astype(int)
+    v_map = np.round(nibabel.affines.apply_affine(spl.inv(affine),surf_vertices[i])).astype(int)
+    v_cube = np.array([relative_index for relative_index in product((-1, 0, 1), repeat=3)])+v_map
+    neigh_coords = np.array([point for point in np.unique(neigh_coords,axis=0) if point in v_cube]).astype(int)
+    if len(neigh_coords) < 4: # adding second ring neighbors
+      neighbors = I
+      for j in I:
+        neighbor_idx = np.array(np.sum(surf_faces == j, 1), np.bool)
+        J = np.unique(surf_faces[neighbor_idx, :])
+        neighbors = np.union1d(neighbors,J)
+      new_v = np.array([surf_vertices[i]+(surf_vertices[j]-surf_vertices[i])*p/k for p in range(1,k)
+                        for j in np.setdiff1d(neighbors,i)])
+      dense_neigh = np.vstack([surf_vertices[neighbors],new_v])
+      neigh_coords = np.round(nibabel.affines.apply_affine(spl.inv(affine),dense_neigh)).astype(int)
+      v_map = np.round(nibabel.affines.apply_affine(spl.inv(affine),surf_vertices[i])).astype(int)
+      v_cube = np.array([relative_index for relative_index in product((-1, 0, 1), repeat=3)])+v_map
+      neigh_coords = np.array([point for point in np.unique(neigh_coords,axis=0) if point in v_cube]).astype(int)
 
-    return data[neigh_coords[masked_neigh,0],neigh_coords[masked_neigh,1], neigh_coords[masked_neigh,2],:]
+    return data[neigh_coords[:,0],neigh_coords[:,1], neigh_coords[:,2],:]
 
-def vb_hybrid_internal_loop(i0, iN, surf_vertices, brain_mask, data, norm, residual_tolerance, max_num_iter, print_progress=False):
+def vb_hybrid_internal_loop(i0, iN, surf_vertices, surf_faces, data, norm, residual_tolerance, max_num_iter, k=3, print_progress=False):
     """Computes the Vogt-Bailey index of vertices in a given range
 
        Parameters
@@ -349,6 +369,8 @@ def vb_hybrid_internal_loop(i0, iN, surf_vertices, brain_mask, data, norm, resid
            Volumetric data used to calculate the VB index. N is the number of maps
        norm: string
            Method of reordering. Possibilities are 'geig', 'unnorm', 'rw' and 'sym'
+       k: integer
+           Factor determining increase in density of input mesh (default k=3)
        print_progress: boolean
            Print the current progress of the system
 
@@ -361,15 +383,17 @@ def vb_hybrid_internal_loop(i0, iN, surf_vertices, brain_mask, data, norm, resid
     # Calculate how many vertices we will compute
     diff = iN - i0
     loc_result = np.zeros(diff)
+    loc_neigh = np.zeros(diff)
 
     for idx in range(diff):
         #Calculate the real index
         i = idx + i0
 
         # Get neighborhood and its data
-        # print(data.shape)
         try:
-            neighborhood = get_neighborhood(data,surf_vertices[i,:],brain_mask)
+            neighborhood = get_neighborhood(data,surf_verticesi,surf_faces,i,affine,k=k)
+            loc_neigh[idx] = len(neighborhood)
+
             if len(neighborhood) == 0:
                 print("Warning: no neighborhood")
                 loc_result[idx] = np.nan
@@ -377,15 +401,11 @@ def vb_hybrid_internal_loop(i0, iN, surf_vertices, brain_mask, data, norm, resid
             affinity = m.create_affinity_matrix(neighborhood)
             
             if affinity.shape[0] > 3:
-                #tr_row, tr_col = np.triu_indices(affinity.shape[0], k=1)
-            
                 # Calculate the second smallest eigenvalue
                 _, _, eigenvalue, _ = m.spectral_reorder(affinity, residual_tolerance, max_num_iter, norm)
-                # return [0]
-                # Store the result of this run
                 loc_result[idx] = eigenvalue
-                #loc_result[idx] = np.mean(affinity[tr_row, tr_col])
             else:
+                print("Warning: too few neighbors:",affinity.shape[0], "vertex:",i)
                 loc_result[idx] = np.nan
         except m.TimeSeriesTooShortError as error:
             raise error
@@ -403,17 +423,17 @@ def vb_hybrid_internal_loop(i0, iN, surf_vertices, brain_mask, data, norm, resid
             if counter.value % 1000 == 0:
                 print("{}/{}".format(counter.value, n))
 
-    return loc_result
+    return loc_result, loc_neigh
 	
-def vb_hybrid(surf_vertices, brain_mask, affine, n_cpus, data, norm, cort_index, residual_tolerance, max_num_iter, output_name=None, nib_surf=None):
+def vb_hybrid(surf_vertices, surf_faces, affine, n_cpus, data, norm, cort_index, residual_tolerance, max_num_iter, output_name=None, nib_surf=None, k=3):
     """Computes the Vogt-Bailey index of vertices for the whole mesh
 
        Parameters
        ----------
        surf_vertices: (M, 3) numpy array
            Vertices of the mesh
-       brain_mask: (nRows, nCols, nSlices) numpy array
-           Whole brain mask. Used to mask volumetric data
+       surf_faces: (M, 3) numpy array
+           Faces of the mesh. Used to find the neighborhood of a given vertex
        n_cpus: integer
            How many CPUS are available to run the calculation
        data: (nRows, nCols, nSlices, N) numpy array
@@ -426,6 +446,8 @@ def vb_hybrid(surf_vertices, brain_mask, affine, n_cpus, data, norm, cort_index,
            Root of file to save the results to. If specified, nib_surf must also be provided
        nib_surf: nibabel object
            Nibabel object containing metadata to be replicated
+       k: integer
+           Factor determining increase in density of input mesh (default k=3)
 
        Returns
        -------
@@ -433,9 +455,6 @@ def vb_hybrid(surf_vertices, brain_mask, affine, n_cpus, data, norm, cort_index,
                Resulting VB index of the indices in range
     """
     
-    # Convert vertex coordinates to voxel coordinates
-    vox_coords = np.round(nibabel.affines.apply_affine(np.linalg.inv(affine),surf_vertices))
-
     # Calculate how many vertices each process is going to be responsible for
     n_items = len(surf_vertices)
     n_cpus = min(n_items, n_cpus)
@@ -453,21 +472,27 @@ def vb_hybrid(surf_vertices, brain_mask, affine, n_cpus, data, norm, cort_index,
     threads = []
     for i0 in range(0, n_items, dn):
         iN = min(i0+dn, n_items)
-        threads.append(pool.apply_async(vb_hybrid_internal_loop, (i0, iN, vox_coords, brain_mask, data, norm, residual_tolerance, max_num_iter), error_callback=callback))
+        threads.append(pool.apply_async(vb_hybrid_internal_loop, (i0, iN, surf_vertices, surf_faces, affine, data, norm, residual_tolerance, max_num_iter, k), error_callback=callback))
 
 
     # Gather the results from the threads we just spawned
     results = []
+    n_neigh = []
     for i, res in enumerate(threads):
         res_ = res.get()
-        for r in res_:
+        for r in res_[0]:
             results.append(r)
+        for r in res_[1]:
+            n_neigh.append(r)
     results = np.array(results)
+    n_neigh = np.array(n_neigh)
     results[np.logical_not(cort_index)] = np.nan
+    n_neigh[np.logical_not(cort_index)] = np.nan
     
     # Save file
     if output_name is not None:
         io.save_gifti(nib_surf, results, output_name + ".vbi-hybrid.shape.gii")
+        io.save_gifti(nib_surf, n_neigh, output_name + ".neighbors.shape.gii")
 
     # Cleanup
     pool.close()
