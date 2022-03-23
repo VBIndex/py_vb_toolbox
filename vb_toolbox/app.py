@@ -78,6 +78,8 @@ def create_parser():
                         
     parser.add_argument('-mi', '--maxiter', metavar='max iterations', type=int, nargs=1, default=[50],
                         help="""Maximum number of iterations for LOBPCG. Defaults to 50.""")
+    parser.add_argument('-debug', '--debug', action='store_true',
+                        help="""Save additional files for debugging.""")
 
     requiredNamed = parser.add_argument_group('required named arguments')
 
@@ -163,7 +165,7 @@ def main():
             cort_index = np.array(labels, bool)
             # Read brain mask
             try:
-                result = vb.vb_hybrid(vertices, faces, affine, n_cpus, data, args.norm[0], cort_index, args.tol[0], args.maxiter[0], args.output[0] + "." + args.norm[0], nib_surf, k=3)
+                result = vb.vb_hybrid(vertices, faces, affine, n_cpus, data, args.norm[0], cort_index, args.tol[0], args.maxiter[0], args.output[0] + "." + args.norm[0], nib_surf, k=3, debug=args.debug)
             except Exception as error:
                 sys.stderr.write(str(error))
                 sys.exit(2)
