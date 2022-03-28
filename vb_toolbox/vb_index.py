@@ -72,7 +72,7 @@ def vb_index_internal_loop(i0, iN, surf_faces, data, norm, residual_tolerance, m
 
             # Calculate the second smallest eigenvalue
             affinity = m.create_affinity_matrix(neighborhood)
-            _, _, eigenvalue, _ = m.spectral_reorder(affinity, residual_tolerance, max_num_iter, norm, full_brain=False)
+            _, _, eigenvalue, _ = m.spectral_reorder(False, affinity, residual_tolerance, max_num_iter, norm)
 
             # return [0]
             # Store the result of this run
@@ -354,7 +354,7 @@ def get_neighborhood(data, surf_vertices, surf_faces, i, affine, k=3, debug=Fals
     else:
         return data[neigh_coords[:,0],neigh_coords[:,1], neigh_coords[:,2],:]
 
-def vb_hybrid_internal_loop(i0, iN, surf_vertices, surf_faces, data, norm, residual_tolerance, max_num_iter, k=3, debug=False, print_progress=False):
+def vb_hybrid_internal_loop(i0, iN, surf_vertices, surf_faces, affine, data, norm, residual_tolerance, max_num_iter, k=3, debug=False, print_progress=False):
     """Computes the Vogt-Bailey index of vertices in a given range
 
        Parameters
@@ -412,7 +412,7 @@ def vb_hybrid_internal_loop(i0, iN, surf_vertices, surf_faces, data, norm, resid
             
             if affinity.shape[0] > 3:
                 # Calculate the second smallest eigenvalue
-                _, _, eigenvalue, _ = m.spectral_reorder(affinity, residual_tolerance, max_num_iter, norm, full_brain=False)
+                _, _, eigenvalue, _ = m.spectral_reorder(False, affinity, residual_tolerance, max_num_iter, norm)
                 loc_result[idx] = eigenvalue
             else:
                 print("Warning: too few neighbors:",affinity.shape[0], "vertex:",i)
@@ -433,7 +433,10 @@ def vb_hybrid_internal_loop(i0, iN, surf_vertices, surf_faces, data, norm, resid
             if counter.value % 1000 == 0:
                 print("{}/{}".format(counter.value, n))
 
-    return loc_result, loc_neigh, all_coords
+    if debug:
+        return loc_result, loc_neigh, all_coords
+    else:
+        return loc_result, loc_neigh
 	
 def vb_hybrid(surf_vertices, surf_faces, affine, n_cpus, data, norm, cort_index, residual_tolerance, max_num_iter, output_name=None, nib_surf=None, k=3, debug=False):
     """Computes the Vogt-Bailey index of vertices for the whole mesh
