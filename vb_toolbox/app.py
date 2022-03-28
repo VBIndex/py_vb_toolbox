@@ -53,7 +53,7 @@ def create_parser():
     parser.add_argument('-n', '--norm', metavar='norm', type=str, nargs=1,
                         default=["geig"], help="""Laplacian normalization to be
                         used. Possibilities are "geig", "unnorm", "rw" and
-                        "sym". Defaults to geig.""")
+                        "sym". Defaults to geig for the full brain and ROI analyses, and to unnorm otherwise.""")
 
     parser.add_argument('-fb', '--full-brain', action='store_true',
                         help="""Calculate full brain feature gradient analysis.""")
