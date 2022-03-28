@@ -162,7 +162,7 @@ def vb_index(surf_vertices, surf_faces, n_cpus, data, norm, cort_index, residual
 
     return results
 
-def vb_cluster_internal_loop(idx_cluster_0, idx_cluster_N, surf_faces, data, cluster_index, norm, residual_tolerance, max_num_iter, print_progress=False, full_brain):
+def vb_cluster_internal_loop(idx_cluster_0, idx_cluster_N, surf_faces, data, cluster_index, norm, residual_tolerance, max_num_iter, full_brain, print_progress=False):
     """Computes the Vogt-Bailey index and Fiedler vector of vertices of given clusters
 
        Parameters
@@ -229,7 +229,7 @@ def vb_cluster_internal_loop(idx_cluster_0, idx_cluster_N, surf_faces, data, clu
 
     return loc_result
 
-def vb_cluster(surf_vertices, surf_faces, n_cpus, data, cluster_index, norm, residual_tolerance, max_num_iter, output_name = None, nib_surf=None, full_brain):
+def vb_cluster(surf_vertices, surf_faces, n_cpus, data, cluster_index, norm, residual_tolerance, max_num_iter, full_brain, output_name = None, nib_surf=None):
     """Computes the clustered Vogt-Bailey index and Fiedler vector of vertices for the whole mesh
 
        Parameters
