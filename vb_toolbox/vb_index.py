@@ -72,7 +72,7 @@ def vb_index_internal_loop(i0, iN, surf_faces, data, norm, residual_tolerance, m
 
             # Calculate the second smallest eigenvalue
             affinity = m.create_affinity_matrix(neighborhood)
-            _, _, eigenvalue, _ = m.spectral_reorder(affinity, residual_tolerance, max_num_iter, norm)
+            _, _, eigenvalue, _ = m.spectral_reorder(affinity, residual_tolerance, max_num_iter, norm, full_brain='no')
 
             # return [0]
             # Store the result of this run
@@ -162,7 +162,7 @@ def vb_index(surf_vertices, surf_faces, n_cpus, data, norm, cort_index, residual
 
     return results
 
-def vb_cluster_internal_loop(idx_cluster_0, idx_cluster_N, surf_faces, data, cluster_index, norm, residual_tolerance, max_num_iter, print_progress=False):
+def vb_cluster_internal_loop(idx_cluster_0, idx_cluster_N, surf_faces, data, cluster_index, norm, residual_tolerance, max_num_iter, print_progress=False, full_brain):
     """Computes the Vogt-Bailey index and Fiedler vector of vertices of given clusters
 
        Parameters
@@ -206,7 +206,7 @@ def vb_cluster_internal_loop(idx_cluster_0, idx_cluster_N, surf_faces, data, clu
 
             # Calculate the Fiedler eigenpair
             affinity = m.create_affinity_matrix(neighborhood)
-            _, _, eigenvalue, eigenvector = m.spectral_reorder(affinity, residual_tolerance, max_num_iter, norm)
+            _, _, eigenvalue, eigenvector = m.spectral_reorder(affinity, residual_tolerance, max_num_iter, norm, full_brain)
 
             # Store the result of this run
             # Warning: It is not true that the eigenvectors will be all the same
@@ -229,7 +229,7 @@ def vb_cluster_internal_loop(idx_cluster_0, idx_cluster_N, surf_faces, data, clu
 
     return loc_result
 
-def vb_cluster(surf_vertices, surf_faces, n_cpus, data, cluster_index, norm, residual_tolerance, max_num_iter, output_name = None, nib_surf=None):
+def vb_cluster(surf_vertices, surf_faces, n_cpus, data, cluster_index, norm, residual_tolerance, max_num_iter, output_name = None, nib_surf=None, full_brain):
     """Computes the clustered Vogt-Bailey index and Fiedler vector of vertices for the whole mesh
 
        Parameters
@@ -282,7 +282,7 @@ def vb_cluster(surf_vertices, surf_faces, n_cpus, data, cluster_index, norm, res
     threads = []
     for i0 in range(0, n_items, dn):
         iN = min(i0+dn, n_items)
-        threads.append(pool.apply_async(vb_cluster_internal_loop, (i0, iN, surf_faces, data, cluster_index, norm, residual_tolerance, max_num_iter), error_callback=callback))
+        threads.append(pool.apply_async(vb_cluster_internal_loop, (i0, iN, surf_faces, data, cluster_index, norm, residual_tolerance, max_num_iter, full_brain), error_callback=callback))
 
 
     # Gather the results from the threads we just spawned
@@ -412,7 +412,7 @@ def vb_hybrid_internal_loop(i0, iN, surf_vertices, surf_faces, data, norm, resid
             
             if affinity.shape[0] > 3:
                 # Calculate the second smallest eigenvalue
-                _, _, eigenvalue, _ = m.spectral_reorder(affinity, residual_tolerance, max_num_iter, norm)
+                _, _, eigenvalue, _ = m.spectral_reorder(affinity, residual_tolerance, max_num_iter, norm, full_brain='no')
                 loc_result[idx] = eigenvalue
             else:
                 print("Warning: too few neighbors:",affinity.shape[0], "vertex:",i)
