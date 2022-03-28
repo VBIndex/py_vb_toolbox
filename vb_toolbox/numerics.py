@@ -41,7 +41,7 @@ def force_symmetric(M):
     return triu_M + diag_M + triu_M.transpose()
     
 
-def get_fiedler_eigenpair(Q, D=None, is_symmetric=True, tol='def_tol', maxiter=50):
+def get_fiedler_eigenpair(Q, D=None, is_symmetric=True, tol='def_tol', maxiter=50, full_brain):
 
     """Solve the general eigenproblem to find the Fiedler vector and the corresponding eigenvalue.
 
@@ -67,17 +67,20 @@ def get_fiedler_eigenpair(Q, D=None, is_symmetric=True, tol='def_tol', maxiter=5
     fiedler_vector: (M) numpy array
                     The Fiedler vector
     """
-    
-    X = np.random.rand(Q.shape[0],2)
-    tol_standard = np.sqrt(1e-15) * Q.shape[0]
-    if tol == 'def_tol':
-        tol = tol_standard*(10**(-3))
-        
     if is_symmetric:
-        eigenvalues, eigenvectors = lobpcg(Q, X, B=D, M=None, Y=None, tol=tol, maxiter=maxiter, largest=False, verbosityLevel=0, retLambdaHistory=False, retResidualNormsHistory=False)
+        
+        if full_brain == 'yes':
+            X = np.random.rand(Q.shape[0],2)
+            tol_standard = np.sqrt(1e-15) * Q.shape[0]
+            if tol == 'def_tol':
+                tol = tol_standard*(10**(-3))
+            eigenvalues, eigenvectors = lobpcg(Q, X, B=D, M=None, Y=None, tol=tol, maxiter=maxiter, largest=False, verbosityLevel=0, retLambdaHistory=False, retResidualNormsHistory=False)
+        else:
+            eigenvalues, eigenvectors = spl.eigh(Q, D, check_finite=False)
+            
     else:
         eigenvalues, eigenvectors = spl.eig(Q, D, check_finite=False)
-        
+            
     eigenvalues = np.real(eigenvalues)
     eigenvectors = np.real(eigenvectors)
     
@@ -101,7 +104,7 @@ def get_fiedler_eigenpair(Q, D=None, is_symmetric=True, tol='def_tol', maxiter=5
     return second_smallest_eigval, fiedler_vector
     
 
-def spectral_reorder(B, residual_tolerance, max_num_iter, method='geig'):
+def spectral_reorder(B, residual_tolerance, max_num_iter, method='geig', full_brain):
     """Computes the spectral reorder of the matrix B
 
     Parameters
@@ -158,7 +161,7 @@ def spectral_reorder(B, residual_tolerance, max_num_iter, method='geig'):
         # Method using generalised spectral decomposition of the
         # un-normalised Laplacian (see Shi and Malik, 2000)
 
-        eigenvalue, eigenvector = get_fiedler_eigenpair(Q, D, tol=residual_tolerance, maxiter=max_num_iter)
+        eigenvalue, eigenvector = get_fiedler_eigenpair(Q, D, tol=residual_tolerance, maxiter=max_num_iter, full_brain)
 
     elif method == 'sym':
         # Method using the eigen decomposition of the Symmetric Normalized
@@ -167,7 +170,7 @@ def spectral_reorder(B, residual_tolerance, max_num_iter, method='geig'):
         L = spl.solve(T, Q)/np.diag(T) #Compute the normalized laplacian
         L = force_symmetric(L) # Force symmetry
 
-        eigenvalue, eigenvector = get_fiedler_eigenpair(L, tol=residual_tolerance, maxiter=max_num_iter)
+        eigenvalue, eigenvector = get_fiedler_eigenpair(L, tol=residual_tolerance, maxiter=max_num_iter, full_brain)
         eigenvector = spl.solve(T, eigenvector) # automatically normalized (i.e. eigenvector.transpose() @ (D @ eigenvector) = 1)
 
     elif method == 'rw':
@@ -176,13 +179,13 @@ def spectral_reorder(B, residual_tolerance, max_num_iter, method='geig'):
 
         L = spl.solve(D, Q)
 
-        eigenvalue, eigenvector = get_fiedler_eigenpair(L, is_symmetric=False, tol=residual_tolerance, maxiter=max_num_iter)
+        eigenvalue, eigenvector = get_fiedler_eigenpair(L, is_symmetric=False, tol=residual_tolerance, maxiter=max_num_iter, full_brain)
         n = np.matmul(eigenvector.transpose(), np.matmul(D, eigenvector))
         eigenvector = eigenvector/np.sqrt(n)
 
     elif method == 'unnorm':
 
-        eigenvalue, eigenvector = get_fiedler_eigenpair(Q, tol=residual_tolerance, maxiter=max_num_iter)
+        eigenvalue, eigenvector = get_fiedler_eigenpair(Q, tol=residual_tolerance, maxiter=max_num_iter, full_brain)
 
     else:
         raise NameError("""Method '{}' not allowed. \n
