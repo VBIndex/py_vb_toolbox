@@ -145,7 +145,7 @@ def main():
         # Read labels
         _, labels = io.open_gifti(args.mask[0])
         cort_index = np.array(labels, bool)
-        Z = np.array(cort_index, dtype=np.int)
+        Z = np.array(cort_index, dtype=int)
         if args.norm is None:
             L_norm = 'geig'
         else:
