@@ -72,7 +72,7 @@ def vb_index_internal_loop(i0, iN, surf_faces, data, norm, residual_tolerance, m
 
             # Calculate the second smallest eigenvalue
             affinity = m.create_affinity_matrix(neighborhood)
-            _, _, eigenvalue, _ = m.spectral_reorder(affinity, residual_tolerance, max_num_iter, norm, full_brain='no')
+            _, _, eigenvalue, _ = m.spectral_reorder(affinity, residual_tolerance, max_num_iter, norm, full_brain=False)
 
             # return [0]
             # Store the result of this run
@@ -412,7 +412,7 @@ def vb_hybrid_internal_loop(i0, iN, surf_vertices, surf_faces, data, norm, resid
             
             if affinity.shape[0] > 3:
                 # Calculate the second smallest eigenvalue
-                _, _, eigenvalue, _ = m.spectral_reorder(affinity, residual_tolerance, max_num_iter, norm, full_brain='no')
+                _, _, eigenvalue, _ = m.spectral_reorder(affinity, residual_tolerance, max_num_iter, norm, full_brain=False)
                 loc_result[idx] = eigenvalue
             else:
                 print("Warning: too few neighbors:",affinity.shape[0], "vertex:",i)
