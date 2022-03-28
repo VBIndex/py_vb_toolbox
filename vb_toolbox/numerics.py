@@ -69,7 +69,7 @@ def get_fiedler_eigenpair(Q, D=None, is_symmetric=True, tol='def_tol', maxiter=5
     """
     if is_symmetric:
         
-        if full_brain == 'yes':
+        if full_brain == True:
             X = np.random.rand(Q.shape[0],2)
             tol_standard = np.sqrt(1e-15) * Q.shape[0]
             if tol == 'def_tol':
@@ -104,7 +104,7 @@ def get_fiedler_eigenpair(Q, D=None, is_symmetric=True, tol='def_tol', maxiter=5
     return second_smallest_eigval, fiedler_vector
     
 
-def spectral_reorder(B, residual_tolerance, max_num_iter, method='geig', full_brain):
+def spectral_reorder(B, residual_tolerance, max_num_iter, method='unnorm', full_brain):
     """Computes the spectral reorder of the matrix B
 
     Parameters
