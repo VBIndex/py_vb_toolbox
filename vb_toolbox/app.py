@@ -146,8 +146,12 @@ def main():
         _, labels = io.open_gifti(args.mask[0])
         cort_index = np.array(labels, bool)
         Z = np.array(cort_index, dtype=np.int)
+        if args.norm is None:
+            L_norm = 'geig'
+        else:
+            L_norm = args.norm[0]
         try:
-            result = vb.vb_cluster(vertices, faces, n_cpus, data, Z, args.norm[0], args.tol[0], args.maxiter[0], args.output[0] + "." + args.norm[0], nib_surf, full_brain='yes')
+            result = vb.vb_cluster(vertices, faces, n_cpus, data, Z, L_norm, args.tol[0], args.maxiter[0], args.output[0] + "." + L_norm, nib_surf, full_brain=True)
         except Exception as error:
             sys.stderr.write(str(error))
             sys.exit(2)
@@ -194,8 +198,12 @@ def main():
             quit()
         nib, Z = io.open_gifti(args.clusters[0])
         Z = np.array(Z, dtype=np.int)
+        if args.norm is None:
+            L_norm = 'geig'
+        else:
+            L_norm = args.norm[0]
         try:
-            result = vb.vb_cluster(vertices, faces, n_cpus, data, Z, args.norm[0], args.tol[0], args.maxiter[0], args.output[0] + "." + args.norm[0], nib_surf, full_brain='no')
+            result = vb.vb_cluster(vertices, faces, n_cpus, data, Z, L_norm, args.tol[0], args.maxiter[0], args.output[0] + "." + L_norm, nib_surf, full_brain=False)
         except Exception as error:
             sys.stderr.write(str(error))
             sys.exit(2)
