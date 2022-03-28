@@ -41,7 +41,7 @@ def force_symmetric(M):
     return triu_M + diag_M + triu_M.transpose()
     
 
-def get_fiedler_eigenpair(Q, D=None, is_symmetric=True, tol='def_tol', maxiter=50, full_brain):
+def get_fiedler_eigenpair(full_brain, Q, D=None, is_symmetric=True, tol='def_tol', maxiter=50):
 
     """Solve the general eigenproblem to find the Fiedler vector and the corresponding eigenvalue.
 
@@ -104,7 +104,7 @@ def get_fiedler_eigenpair(Q, D=None, is_symmetric=True, tol='def_tol', maxiter=5
     return second_smallest_eigval, fiedler_vector
     
 
-def spectral_reorder(B, residual_tolerance, max_num_iter, method='unnorm', full_brain):
+def spectral_reorder(full_brain, B, residual_tolerance, max_num_iter, method='unnorm'):
     """Computes the spectral reorder of the matrix B
 
     Parameters
@@ -161,7 +161,7 @@ def spectral_reorder(B, residual_tolerance, max_num_iter, method='unnorm', full_
         # Method using generalised spectral decomposition of the
         # un-normalised Laplacian (see Shi and Malik, 2000)
 
-        eigenvalue, eigenvector = get_fiedler_eigenpair(Q, D, tol=residual_tolerance, maxiter=max_num_iter, full_brain)
+        eigenvalue, eigenvector = get_fiedler_eigenpair(full_brain, Q, D, tol=residual_tolerance, maxiter=max_num_iter)
 
     elif method == 'sym':
         # Method using the eigen decomposition of the Symmetric Normalized
@@ -170,7 +170,7 @@ def spectral_reorder(B, residual_tolerance, max_num_iter, method='unnorm', full_
         L = spl.solve(T, Q)/np.diag(T) #Compute the normalized laplacian
         L = force_symmetric(L) # Force symmetry
 
-        eigenvalue, eigenvector = get_fiedler_eigenpair(L, tol=residual_tolerance, maxiter=max_num_iter, full_brain)
+        eigenvalue, eigenvector = get_fiedler_eigenpair(full_brain, L, tol=residual_tolerance, maxiter=max_num_iter)
         eigenvector = spl.solve(T, eigenvector) # automatically normalized (i.e. eigenvector.transpose() @ (D @ eigenvector) = 1)
 
     elif method == 'rw':
@@ -179,13 +179,13 @@ def spectral_reorder(B, residual_tolerance, max_num_iter, method='unnorm', full_
 
         L = spl.solve(D, Q)
 
-        eigenvalue, eigenvector = get_fiedler_eigenpair(L, is_symmetric=False, tol=residual_tolerance, maxiter=max_num_iter, full_brain)
+        eigenvalue, eigenvector = get_fiedler_eigenpair(full_brain, L, is_symmetric=False, tol=residual_tolerance, maxiter=max_num_iter)
         n = np.matmul(eigenvector.transpose(), np.matmul(D, eigenvector))
         eigenvector = eigenvector/np.sqrt(n)
 
     elif method == 'unnorm':
 
-        eigenvalue, eigenvector = get_fiedler_eigenpair(Q, tol=residual_tolerance, maxiter=max_num_iter, full_brain)
+        eigenvalue, eigenvector = get_fiedler_eigenpair(full_brain, Q, tol=residual_tolerance, maxiter=max_num_iter)
 
     else:
         raise NameError("""Method '{}' not allowed. \n
