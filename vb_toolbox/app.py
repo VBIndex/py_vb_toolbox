@@ -51,7 +51,7 @@ def create_parser():
                         will be spawned.""")
 
     parser.add_argument('-n', '--norm', metavar='norm', type=str, nargs=1,
-                        default=["unnorm"], help="""Laplacian normalization to be
+                        help="""Laplacian normalization to be
                         used. Possibilities are "geig", "unnorm", "rw" and
                         "sym". Defaults to geig for the full brain and ROI analyses, and to unnorm otherwise.""")
 
@@ -151,7 +151,7 @@ def main():
         else:
             L_norm = args.norm[0]
         try:
-            result = vb.vb_cluster(vertices, faces, n_cpus, data, Z, L_norm, args.tol[0], args.maxiter[0], args.output[0] + "." + L_norm, nib_surf, full_brain=True)
+            result = vb.vb_cluster(True, vertices, faces, n_cpus, data, Z, L_norm, args.tol[0], args.maxiter[0], args.output[0] + "." + L_norm, nib_surf)
         except Exception as error:
             sys.stderr.write(str(error))
             sys.exit(2)
@@ -169,8 +169,12 @@ def main():
             _, labels = io.open_gifti(args.mask[0])
             cort_index = np.array(labels, bool)
             # Read brain mask
+            if args.norm is None:
+                L_norm = 'unnorm'
+            else:
+                L_norm = args.norm[0]
             try:
-                result = vb.vb_hybrid(vertices, faces, affine, n_cpus, data, args.norm[0], cort_index, args.tol[0], args.maxiter[0], args.output[0] + "." + args.norm[0], nib_surf, k=3, debug=args.debug)
+                result = vb.vb_hybrid(vertices, faces, affine, n_cpus, data, L_norm, cort_index, args.tol[0], args.maxiter[0], args.output[0] + "." + L_norm, nib_surf, k=3, debug=args.debug)
             except Exception as error:
                 sys.stderr.write(str(error))
                 sys.exit(2)
@@ -184,8 +188,12 @@ def main():
             # Read labels
             _, labels = io.open_gifti(args.mask[0])
             cort_index = np.array(labels, bool)
+            if args.norm is None:
+                L_norm = 'unnorm'
+            else:
+                L_norm = args.norm[0]
             try:
-                result = vb.vb_index(vertices, faces, n_cpus, data, args.norm[0], cort_index, args.tol[0], args.maxiter[0], args.output[0] + "." + args.norm[0], nib_surf)
+                result = vb.vb_index(vertices, faces, n_cpus, data, L_norm, cort_index, args.tol[0], args.maxiter[0], args.output[0] + "." + L_norm, nib_surf)
             except Exception as error:
                 sys.stderr.write(str(error))
                 sys.exit(2)
@@ -203,7 +211,7 @@ def main():
         else:
             L_norm = args.norm[0]
         try:
-            result = vb.vb_cluster(vertices, faces, n_cpus, data, Z, L_norm, args.tol[0], args.maxiter[0], args.output[0] + "." + L_norm, nib_surf, full_brain=False)
+            result = vb.vb_cluster(False, vertices, faces, n_cpus, data, Z, L_norm, args.tol[0], args.maxiter[0], args.output[0] + "." + L_norm, nib_surf)
         except Exception as error:
             sys.stderr.write(str(error))
             sys.exit(2)
