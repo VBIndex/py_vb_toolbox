@@ -147,7 +147,7 @@ def main():
         cort_index = np.array(labels, bool)
         Z = np.array(cort_index, dtype=np.int)
         try:
-            result = vb.vb_cluster(vertices, faces, n_cpus, data, Z, args.norm[0], args.tol[0], args.maxiter[0], args.output[0] + "." + args.norm[0], nib_surf, full_brain=yes)
+            result = vb.vb_cluster(vertices, faces, n_cpus, data, Z, args.norm[0], args.tol[0], args.maxiter[0], args.output[0] + "." + args.norm[0], nib_surf, full_brain='yes')
         except Exception as error:
             sys.stderr.write(str(error))
             sys.exit(2)
@@ -195,7 +195,7 @@ def main():
         nib, Z = io.open_gifti(args.clusters[0])
         Z = np.array(Z, dtype=np.int)
         try:
-            result = vb.vb_cluster(vertices, faces, n_cpus, data, Z, args.norm[0], args.tol[0], args.maxiter[0], args.output[0] + "." + args.norm[0], nib_surf, full_brain=no)
+            result = vb.vb_cluster(vertices, faces, n_cpus, data, Z, args.norm[0], args.tol[0], args.maxiter[0], args.output[0] + "." + args.norm[0], nib_surf, full_brain='no')
         except Exception as error:
             sys.stderr.write(str(error))
             sys.exit(2)
