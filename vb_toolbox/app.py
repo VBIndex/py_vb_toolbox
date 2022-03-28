@@ -51,7 +51,7 @@ def create_parser():
                         will be spawned.""")
 
     parser.add_argument('-n', '--norm', metavar='norm', type=str, nargs=1,
-                        default=["geig"], help="""Laplacian normalization to be
+                        default=["unnorm"], help="""Laplacian normalization to be
                         used. Possibilities are "geig", "unnorm", "rw" and
                         "sym". Defaults to geig for the full brain and ROI analyses, and to unnorm otherwise.""")
 
