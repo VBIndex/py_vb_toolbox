@@ -402,6 +402,8 @@ def vb_hybrid_internal_loop(i0, iN, surf_vertices, surf_faces, affine, data, nor
                 all_coords = np.vstack([all_coords,neigh_coords])
             else:
                 neighborhood = get_neighborhood(data,surf_vertices,surf_faces,i,affine,k=k)
+            to_keep = np.where(np.std(neighborhood,axis=1)>1e-10)
+            neighborhood = np.squeeze(neighborhood[to_keep,:])
             loc_neigh[idx] = len(neighborhood)
 
             if len(neighborhood) == 0:
