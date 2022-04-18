@@ -66,7 +66,7 @@ def vb_index_internal_loop(i0, iN, surf_faces, data, norm, residual_tolerance, m
             I = np.unique(surf_faces[neighbor_idx, :])
             neighborhood = data[I]
             if len(neighborhood) == 0:
-                print("Warning: no neighborhood")
+                print("Warning: no neighborhood for vertex:",i)
                 loc_result[idx] = np.nan
                 continue
 
@@ -407,7 +407,7 @@ def vb_hybrid_internal_loop(i0, iN, surf_vertices, surf_faces, affine, data, nor
             loc_neigh[idx] = len(neighborhood)
 
             if len(neighborhood) == 0:
-                print("Warning: no neighborhood")
+                print("Warning: no neighborhood for vertex:",i)
                 loc_result[idx] = np.nan
                 continue
             affinity = m.create_affinity_matrix(neighborhood)
@@ -417,7 +417,7 @@ def vb_hybrid_internal_loop(i0, iN, surf_vertices, surf_faces, affine, data, nor
                 _, _, eigenvalue, _ = m.spectral_reorder(False, affinity, residual_tolerance, max_num_iter, norm)
                 loc_result[idx] = eigenvalue
             else:
-                print("Warning: too few neighbors:",affinity.shape[0], "vertex:",i)
+                print("Warning: too few neighbors ({})".format(affinity.shape[0]), "for vertex:",i)
                 loc_result[idx] = np.nan
         except m.TimeSeriesTooShortError as error:
             raise error

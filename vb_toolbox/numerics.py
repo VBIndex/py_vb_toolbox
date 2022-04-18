@@ -214,10 +214,9 @@ def create_affinity_matrix(neighborhood, eps=np.finfo(float).eps, verbose=False)
     affinity: (M, M) numpy array
               Affinity matrix of the neighborhood
     """
-    # The following two lines are necessary for when neighborhood is an (M,) array (i.e. it is 1D), in 
+    # The following line is necessary for when neighborhood is an (M,) array (i.e. it is 1D), in 
     # which case it is converted to an (M,1) array. 
-    neighborhood_len = neighborhood.shape[0]
-    neighborhood = neighborhood.reshape(neighborhood_len, -1)
+    neighborhood = np.atleast_2d(neighborhood)
     # Here, the affinity matrix should have n_neighbors x data_size shape
     if neighborhood.shape[1] < 3:
         raise TimeSeriesTooShortError("Time series have less than 3 entries. Your analysis will be compromised!\n")
