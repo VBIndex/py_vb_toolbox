@@ -41,7 +41,7 @@ def force_symmetric(M):
     return triu_M + diag_M + triu_M.transpose()
     
 
-def get_fiedler_eigenpair(full_brain, Q, D=None, is_symmetric=True, tol='def_tol', maxiter=50):
+def get_fiedler_eigenpair(method, full_brain, Q, D=None, is_symmetric=True, tol='def_tol', maxiter=50):
 
     """Solve the general eigenproblem to find the Fiedler vector and the corresponding eigenvalue.
 
@@ -88,7 +88,7 @@ def get_fiedler_eigenpair(full_brain, Q, D=None, is_symmetric=True, tol='def_tol
     eigenvalues = eigenvalues[sort_eigen]
     
     dim = Q.shape[0]
-    if D is None:
+    if method == 'unnorm':
         normalisation_factor = dim
     else:
         normalisation_factor = dim/(dim-1.)
@@ -161,31 +161,35 @@ def spectral_reorder(full_brain, B, residual_tolerance, max_num_iter, method='un
         # Method using generalised spectral decomposition of the
         # un-normalised Laplacian (see Shi and Malik, 2000)
 
-        eigenvalue, eigenvector = get_fiedler_eigenpair(full_brain, Q, D, tol=residual_tolerance, maxiter=max_num_iter)
+        eigenvalue, eigenvector = get_fiedler_eigenpair(method, full_brain, Q, D, tol=residual_tolerance, maxiter=max_num_iter)
 
     elif method == 'sym':
+        warnings.warn("""
+        This method makes use of the Symmetric Normalized Laplacian, and has not been tested rigorously yet""",
+        warnings.UserWarning) 
         # Method using the eigen decomposition of the Symmetric Normalized
         # Laplacian. Note that results should be the same as 'geig'
         T = np.sqrt(D)
         L = spl.solve(T, Q)/np.diag(T) #Compute the normalized laplacian
         L = force_symmetric(L) # Force symmetry
 
-        eigenvalue, eigenvector = get_fiedler_eigenpair(full_brain, L, tol=residual_tolerance, maxiter=max_num_iter)
+        eigenvalue, eigenvector = get_fiedler_eigenpair(method, full_brain, L, tol=residual_tolerance, maxiter=max_num_iter)
         eigenvector = spl.solve(T, eigenvector) # automatically normalized (i.e. eigenvector.transpose() @ (D @ eigenvector) = 1)
 
     elif method == 'rw':
+        warnings.warn("""
+        This method makes use of the Random Walk Normalized Laplacian, and has not been tested rigorously yet""",
+        warnings.UserWarning)
         # Method using eigen decomposition of Random Walk Normalised Laplacian
-        # This method has not been rigorously tested yet
-
         L = spl.solve(D, Q)
 
-        eigenvalue, eigenvector = get_fiedler_eigenpair(full_brain, L, is_symmetric=False, tol=residual_tolerance, maxiter=max_num_iter)
+        eigenvalue, eigenvector = get_fiedler_eigenpair(method, full_brain, L, is_symmetric=False, tol=residual_tolerance, maxiter=max_num_iter)
         n = np.matmul(eigenvector.transpose(), np.matmul(D, eigenvector))
         eigenvector = eigenvector/np.sqrt(n)
 
     elif method == 'unnorm':
 
-        eigenvalue, eigenvector = get_fiedler_eigenpair(full_brain, Q, tol=residual_tolerance, maxiter=max_num_iter)
+        eigenvalue, eigenvector = get_fiedler_eigenpair(method, full_brain, Q, tol=residual_tolerance, maxiter=max_num_iter)
 
     else:
         raise NameError("""Method '{}' not allowed. \n
