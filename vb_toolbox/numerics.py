@@ -163,10 +163,7 @@ def spectral_reorder(full_brain, B, residual_tolerance, max_num_iter, method='un
 
         eigenvalue, eigenvector = get_fiedler_eigenpair(method, full_brain, Q, D, tol=residual_tolerance, maxiter=max_num_iter)
 
-    elif method == 'sym':
-        warnings.warn("""
-        This method makes use of the Symmetric Normalized Laplacian, and has not been tested rigorously yet""",
-        warnings.UserWarning) 
+    elif method == 'sym': 
         # Method using the eigen decomposition of the Symmetric Normalized
         # Laplacian. Note that results should be the same as 'geig'
         T = np.sqrt(D)
@@ -177,9 +174,6 @@ def spectral_reorder(full_brain, B, residual_tolerance, max_num_iter, method='un
         eigenvector = spl.solve(T, eigenvector) # automatically normalized (i.e. eigenvector.transpose() @ (D @ eigenvector) = 1)
 
     elif method == 'rw':
-        warnings.warn("""
-        This method makes use of the Random Walk Normalized Laplacian, and has not been tested rigorously yet""",
-        warnings.UserWarning)
         # Method using eigen decomposition of Random Walk Normalised Laplacian
         L = spl.solve(D, Q)
 
