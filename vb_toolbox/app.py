@@ -140,9 +140,9 @@ def main():
         else:
             data = nib.darrays[0].data
             
-    if args.norm[0] == 'rw':
+    if (args.norm is not None and args.norm[0] == 'rw'):
         print('Warning: this method makes use of the Random Walk Normalized Laplacian, and has not been tested rigorously yet.')
-    if args.norm[0] == 'sym':
+    if args.norm is not None and args.norm[0] == 'sym'):
         print('Warning: this method makes use of the Symmetric Normalized Laplacian, and has not been tested rigorously yet.')
 
     if args.full_brain:
