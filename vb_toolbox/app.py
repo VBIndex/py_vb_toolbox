@@ -86,6 +86,9 @@ def create_parser():
     parser.add_argument('-debug', '--debug', action='store_true',
                         help="""Save additional files for debugging.""")
 
+    parser.add_argument('-affmat', '--save-affinity', action='store_true',
+                        help="""Save local affinity matrices in metric file.""")
+
     requiredNamed = parser.add_argument_group('required named arguments')
 
     requiredNamed.add_argument('-s', '--surface', metavar='file', type=str,
@@ -183,7 +186,7 @@ def main():
             else:
                 L_norm = args.norm[0]
             try:
-                result = vb.vb_hybrid(vertices, faces, affine, n_cpus, data, L_norm, cort_index, args.tol[0], args.maxiter[0], args.output[0] + "." + L_norm, nib_surf, k=3, debug=args.debug)
+                result = vb.vb_hybrid(vertices, faces, affine, n_cpus, data, L_norm, cort_index, args.tol[0], args.maxiter[0], args.output[0] + "." + L_norm, nib_surf, k=3, debug=args.debug, save_affinity=args.save_affinity)
             except Exception as error:
                 sys.stderr.write(str(error))
                 sys.exit(2)

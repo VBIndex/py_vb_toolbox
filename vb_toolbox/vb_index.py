@@ -12,6 +12,7 @@ import scipy.linalg as spl
 import traceback
 import vb_toolbox.io as io
 import vb_toolbox.numerics as m
+import sys
 
 counter = None
 n = None
@@ -335,7 +336,7 @@ def get_neighborhood(data, surf_vertices, surf_faces, i, affine, k=3, debug=Fals
     neigh_coords = np.round(nibabel.affines.apply_affine(spl.inv(affine),dense_neigh)).astype(int)
     v_map = np.round(nibabel.affines.apply_affine(spl.inv(affine),surf_vertices[i])).astype(int)
     v_cube = np.array([relative_index for relative_index in product((-1, 0, 1), repeat=3)])+v_map
-    neigh_coords = np.array([point for point in np.unique(neigh_coords,axis=0) if point in v_cube]).astype(int)
+    neigh_coords =  np.array([v_cube[i] for i in range(len(v_cube)) if np.any(np.all(v_cube[i] == neigh_coords, axis=1))])
     if len(neigh_coords) < 4: # adding second ring neighbors
       neighbors = I
       for j in I:
@@ -348,13 +349,17 @@ def get_neighborhood(data, surf_vertices, surf_faces, i, affine, k=3, debug=Fals
       neigh_coords = np.round(nibabel.affines.apply_affine(spl.inv(affine),dense_neigh)).astype(int)
       v_map = np.round(nibabel.affines.apply_affine(spl.inv(affine),surf_vertices[i])).astype(int)
       v_cube = np.array([relative_index for relative_index in product((-1, 0, 1), repeat=3)])+v_map
-      neigh_coords = np.array([point for point in np.unique(neigh_coords,axis=0) if point in v_cube]).astype(int)
-    if debug:
-        return data[neigh_coords[:,0],neigh_coords[:,1], neigh_coords[:,2],:], neigh_coords
-    else:
-        return data[neigh_coords[:,0],neigh_coords[:,1], neigh_coords[:,2],:]
+      neigh_coords =  np.array([v_cube[i] for i in range(len(v_cube)) if np.any(np.all(v_cube[i] == neigh_coords, axis=1))])
+    neigh_mask = np.array([i for i in range(len(v_cube)) if np.any(np.all(v_cube[i] == neigh_coords, axis=1))])
 
-def vb_hybrid_internal_loop(i0, iN, surf_vertices, surf_faces, affine, data, norm, residual_tolerance, max_num_iter, k=3, debug=False, print_progress=False):
+    if len(neigh_mask) < neigh_coords.shape[0]:
+        print(neigh_coords.shape,len(neigh_mask))
+    if debug:
+        return data[neigh_coords[:,0],neigh_coords[:,1], neigh_coords[:,2],:], neigh_coords, neigh_mask
+    else:
+        return data[neigh_coords[:,0],neigh_coords[:,1], neigh_coords[:,2],:], neigh_mask
+
+def vb_hybrid_internal_loop(i0, iN, surf_vertices, surf_faces, affine, data, norm, residual_tolerance, max_num_iter, k=3, debug=False, print_progress=False, save_affinity=False):
     """Computes the Vogt-Bailey index of vertices in a given range
 
        Parameters
@@ -377,6 +382,8 @@ def vb_hybrid_internal_loop(i0, iN, surf_vertices, surf_faces, affine, data, nor
            Outputs ribbon file for debugging
        print_progress: boolean
            Print the current progress of the system
+       save_affinity: boolean
+           Save local affinity matirces in metric file
 
        Returns
        -------
@@ -388,7 +395,9 @@ def vb_hybrid_internal_loop(i0, iN, surf_vertices, surf_faces, affine, data, nor
     diff = iN - i0
     loc_result = np.zeros(diff)
     loc_neigh = np.zeros(diff)
+    loc_affinity = np.zeros([diff,27])
     if debug: all_coords = np.empty((0,3))
+    if save_affinity: all_affmats= np.zeros((diff,len(np.triu_indices(27,1)[0])))
 
 
     for idx in range(diff):
@@ -398,12 +407,13 @@ def vb_hybrid_internal_loop(i0, iN, surf_vertices, surf_faces, affine, data, nor
         # Get neighborhood and its data
         try:
             if debug:
-                neighborhood, neigh_coords = get_neighborhood(data,surf_vertices,surf_faces,i,affine,k=k,debug=True)
+                neighborhood, neigh_coords, neigh_mask = get_neighborhood(data,surf_vertices,surf_faces,i,affine,k=k,debug=True)
                 all_coords = np.vstack([all_coords,neigh_coords])
             else:
-                neighborhood = get_neighborhood(data,surf_vertices,surf_faces,i,affine,k=k)
+                neighborhood, neigh_mask = get_neighborhood(data,surf_vertices,surf_faces,i,affine,k=k)
             to_keep = np.where(np.std(neighborhood,axis=1)>1e-10)
             neighborhood = np.squeeze(neighborhood[to_keep,:])
+            neigh_mask = neigh_mask[to_keep[0]]
             loc_neigh[idx] = len(neighborhood)
 
             if len(neighborhood) == 0:
@@ -419,6 +429,12 @@ def vb_hybrid_internal_loop(i0, iN, surf_vertices, surf_faces, affine, data, nor
             else:
                 print("Warning: too few neighbors ({})".format(affinity.shape[0]), "for vertex:",i)
                 loc_result[idx] = np.nan
+            if affinity.shape[0] < 27:
+                full_affinity = np.zeros([27,27])
+                full_affinity[np.ix_(neigh_mask,neigh_mask)] = affinity
+            else:
+                full_affinity = affinity
+            if save_affinity: all_affmats[idx,:] = full_affinity[np.triu_indices(27,1)]
         except m.TimeSeriesTooShortError as error:
             raise error
         except Exception:
@@ -435,12 +451,16 @@ def vb_hybrid_internal_loop(i0, iN, surf_vertices, surf_faces, affine, data, nor
             if counter.value % 1000 == 0:
                 print("{}/{}".format(counter.value, n))
 
+    if debug and save_affinity:
+        return loc_result, loc_neigh, all_coords, all_affmats
     if debug:
         return loc_result, loc_neigh, all_coords
+    if save_affinity:
+        return loc_result, loc_neigh, all_affmats
     else:
         return loc_result, loc_neigh
 	
-def vb_hybrid(surf_vertices, surf_faces, affine, n_cpus, data, norm, cort_index, residual_tolerance, max_num_iter, output_name=None, nib_surf=None, k=3, debug=False):
+def vb_hybrid(surf_vertices, surf_faces, affine, n_cpus, data, norm, cort_index, residual_tolerance, max_num_iter, output_name=None, nib_surf=None, k=3, debug=False, save_affinity=False):
     """Computes the Vogt-Bailey index of vertices for the whole mesh
 
        Parameters
@@ -465,6 +485,8 @@ def vb_hybrid(surf_vertices, surf_faces, affine, n_cpus, data, norm, cort_index,
            Factor determining increase in density of input mesh (default k=3)
        debug: boolean
            Outputs ribbon file for debugging
+       save_affinity: boolean
+           Save local affinity matirces in metric file
 
        Returns
        -------
@@ -489,7 +511,7 @@ def vb_hybrid(surf_vertices, surf_faces, affine, n_cpus, data, norm, cort_index,
     threads = []
     for i0 in range(0, n_items, dn):
         iN = min(i0+dn, n_items)
-        threads.append(pool.apply_async(vb_hybrid_internal_loop, (i0, iN, surf_vertices, surf_faces, affine, data, norm, residual_tolerance, max_num_iter, k, debug), error_callback=callback))
+        threads.append(pool.apply_async(vb_hybrid_internal_loop, (i0, iN, surf_vertices, surf_faces, affine, data, norm, residual_tolerance, max_num_iter, k, debug, False, save_affinity), error_callback=callback))
 
 
     # Gather the results from the threads we just spawned
@@ -497,6 +519,8 @@ def vb_hybrid(surf_vertices, surf_faces, affine, n_cpus, data, norm, cort_index,
     n_neigh = []
     if debug:
         coords = np.empty((0,3))
+    if save_affinity:
+        affmat = np.empty((0,len(np.triu_indices(27,1)[0])))
     for i, res in enumerate(threads):
         res_ = res.get()
         for r in res_[0]:
@@ -505,10 +529,13 @@ def vb_hybrid(surf_vertices, surf_faces, affine, n_cpus, data, norm, cort_index,
             n_neigh.append(r)
         if debug:
             coords = np.vstack([coords,res_[2]])
+        if save_affinity:
+            affmat = np.vstack([affmat,res_[-1]])
     results = np.array(results)
     n_neigh = np.array(n_neigh)
     results[np.logical_not(cort_index)] = np.nan
     n_neigh[np.logical_not(cort_index)] = np.nan
+    if save_affinity: affmat[np.logical_not(cort_index),:] = np.nan
     if debug: coords = coords.astype(int)
 
     
@@ -520,6 +547,8 @@ def vb_hybrid(surf_vertices, surf_faces, affine, n_cpus, data, norm, cort_index,
             ribbon = np.zeros([data.shape[0],data.shape[1],data.shape[2]])
             ribbon[coords[:,0], coords[:,1], coords[:,2]] = 1
             nibabel.save(nibabel.Nifti1Image(ribbon, affine),output_name+'.ribbon.nii.gz')
+        if save_affinity:
+            io.save_gifti(nib_surf, affmat, output_name + ".affinity.shape.gii")
 
     # Cleanup
     pool.close()
