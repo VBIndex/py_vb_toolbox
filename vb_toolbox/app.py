@@ -126,9 +126,9 @@ def main():
             hemi = 'CortexRight'
             break
 
-    # Add the cortex information to the beginning of the meta data
+    # Add the cortex information to the meta data
     if hemi:
-        nib_surf.meta.data.insert(0, nibabel.gifti.GiftiNVPairs('AnatomicalStructurePrimary', hemi))
+        nib_surf.meta['AnatomicalStructurePrimary'] = hemi
 
     nib = nibabel.load(args.data[0])
     if args.hybrid:
