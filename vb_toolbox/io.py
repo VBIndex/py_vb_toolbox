@@ -66,7 +66,10 @@ def save_gifti(og_img, data, filename):
     data_array = nibabel.gifti.gifti.GiftiDataArray(np.array(data, dtype=np.float32))
 
     # Create a meta object containing the cortex information
-    new_meta = nibabel.gifti.gifti.GiftiMetaData(og_img.meta.data[0])
+    if 'AnatomicalStructurePrimary' in og_img.meta:
+        new_meta = nibabel.gifti.gifti.GiftiMetaData(AnatomicalStructurePrimary=og_img.meta['AnatomicalStructurePrimary'])
+    else:
+        new_meta = nibabel.gifti.gifti.GiftiMetaData()
     new_nib = nibabel.gifti.gifti.GiftiImage(darrays=[data_array], meta=new_meta)
 
     nibabel.save(new_nib, filename)
