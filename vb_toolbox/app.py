@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # vim:fenc=utf-8
 #
-# Copyright © 2019 Lucas Costa Campos <l.campos@fz-juelich.de>
+# Copyright © 2022 VB Index Team
 #
 # Distributed under terms of the GNU license.
 
@@ -28,7 +28,7 @@ class MultilineFormatter(argparse.HelpFormatter):
 
 def create_parser():
     authors = '''authors:
-    |n   Lucas da Costa Campos (lqccampos (at) gmail.com) and Claude J Bajada (claude.bajada (at) um.edu.mt).'''
+    |n   The VB Index Team (See Contributors Section in the main README)'''
     copyright = '''copyright:|n
         This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -41,29 +41,29 @@ def create_parser():
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses>.
     '''
-
+    references = '''references:|n
+        Bajada, C. J., Campos, L. Q. C., Caspers, S., Muscat, R., Parker, G. J., Ralph, M. A. L., ... & Trujillo-Barreto, N. J. (2020). A tutorial and tool for exploring feature similarity gradients with MRI data. NeuroImage, 221, 117140.|n
+        Ciantar, K. G., Farrugia, C., Scerri, K., Xu, T., & Bajada, C. J. (2020). Geometric effects of volume-to-surface mapping of fMRI data. bioRxiv.
+    '''
+    
     parser = argparse.ArgumentParser(description='Calculate the Vogt-Bailey index of a dataset. For more information, check https://github.com/VBIndex/py_vb_toolbox.',
-                                     epilog=authors + " |n " + copyright,
+                                     epilog=authors + " |n " + references + " |n " + copyright,
                                      formatter_class=MultilineFormatter)
     parser.add_argument('-j', '--jobs', metavar='N', type=int, nargs=1,
                         default=[multiprocessing.cpu_count()], help="""Maximum
                         number of jobs to be used. If abscent, one job per CPU
-                        will be spawned""")
+                        will be spawned.""")
 
     parser.add_argument('-n', '--norm', metavar='norm', type=str, nargs=1,
-                        default=["geig"], help="""Laplacian normalization to be
+                        help="""Laplacian normalization to be
                         used. Possibilities are "geig", "unnorm", "rw" and
-                        "sym". Defaults to geig.""")
+                        "sym". Defaults to geig for the full brain and ROI analyses, and to unnorm otherwise.""")
 
     parser.add_argument('-fb', '--full-brain', action='store_true',
                         help="""Calculate full brain feature gradient analysis.""")
 
     parser.add_argument('-hy', '--hybrid', action='store_true',
                         help="""Calculate VB index with hybrid approach.""")
-
-    parser.add_argument('-vm', '--volmask', metavar='file', type=str,
-                               nargs=1, default=None, help="""Nifti file containing the whole brain mask
-                               in volumetric space. This flag must be set if computing hybrid VB""")
 
     parser.add_argument('-m', '--mask', metavar='file', type=str,
                                nargs=1, help="""File containing the labels to
@@ -75,21 +75,31 @@ def create_parser():
                         help="""File containing the surface clusters. Cluster
                         with index 0 are expected to denote the medial brain
                         structures and will be ignored.""")
+                        
+    parser.add_argument('-t', '--tol', metavar='tolerance', type=float, nargs=1,
+                        default=["def_tol"], help="""Residual tolerance (stopping criterion) for LOBPCG. 
+                        Default value = sqrt(10e-18)*n, where n is the number of nodes per graph.""")
+                        
+    parser.add_argument('-mi', '--maxiter', metavar='max iterations', type=int, nargs=1, default=[50],
+                        help="""Maximum number of iterations for LOBPCG. Defaults to 50.""")
+    
+    parser.add_argument('-debug', '--debug', action='store_true',
+                        help="""Save additional files for debugging.""")
 
     requiredNamed = parser.add_argument_group('required named arguments')
 
     requiredNamed.add_argument('-s', '--surface', metavar='file', type=str,
                                nargs=1, help="""File containing the surface
-                                              mesh""", required=True)
+                                              mesh.""", required=True)
 
     requiredNamed.add_argument('-d', '--data', metavar='file', type=str,
                                nargs=1, help="""File containing the data over
-                                              the surface (or volume if hybrid)""", required=True)
+                                              the surface (or volume if hybrid).""", required=True)
 
 
     requiredNamed.add_argument('-o', '--output', metavar='file', type=str,
                                nargs=1, help="""Base name for the
-                                              output files""", required=True)
+                                              output files.""", required=True)
 
     return parser
 
@@ -116,9 +126,9 @@ def main():
             hemi = 'CortexRight'
             break
 
-    # Add the cortex information to the beginning of the meta data
+    # Add the cortex information to the meta data
     if hemi:
-        nib_surf.meta.data.insert(0, nibabel.gifti.GiftiNVPairs('AnatomicalStructurePrimary', hemi))
+        nib_surf.meta['AnatomicalStructurePrimary'] = hemi
 
     nib = nibabel.load(args.data[0])
     if args.hybrid:
@@ -129,6 +139,11 @@ def main():
             data = np.array([n.data for n in nib.darrays]).transpose()
         else:
             data = nib.darrays[0].data
+            
+    if (args.norm is not None and args.norm[0] == 'rw'):
+        print('Warning: this method makes use of the Random Walk Normalized Laplacian, and has not been tested rigorously yet.')
+    if (args.norm is not None and args.norm[0] == 'sym'):
+        print('Warning: this method makes use of the Symmetric Normalized Laplacian, and has not been tested rigorously yet.')
 
     if args.full_brain:
         print("Running full brain analysis")
@@ -138,10 +153,14 @@ def main():
             quit()
         # Read labels
         _, labels = io.open_gifti(args.mask[0])
-        cort_index = np.array(labels, np.bool)
-        Z = np.array(cort_index, dtype=np.int)
+        cort_index = np.array(labels, bool)
+        Z = np.array(cort_index, dtype=int)
+        if args.norm is None:
+            L_norm = 'geig'
+        else:
+            L_norm = args.norm[0]
         try:
-            result = vb.vb_cluster(vertices, faces, n_cpus, data, Z, args.norm[0], args.output[0] + "." + args.norm[0], nib_surf)
+            result = vb.vb_cluster(True, vertices, faces, n_cpus, data, Z, L_norm, args.tol[0], args.maxiter[0], args.output[0] + "." + L_norm, nib_surf)
         except Exception as error:
             sys.stderr.write(str(error))
             sys.exit(2)
@@ -154,19 +173,17 @@ def main():
                 sys.stderr.write("A mask file must be provided through the --mask flag. See --help")
                 sys.exit(2)
                 quit()
-            if args.volmask is None:
-                sys.stderr.write("A volumetric mask file must be provided through the --volmask flag. See --help")
-                sys.exit(2)
-                quit()
           
             # Read labels
             _, labels = io.open_gifti(args.mask[0])
-            cort_index = np.array(labels, np.bool)
+            cort_index = np.array(labels, bool)
             # Read brain mask
-            brainmask = nibabel.load(args.volmask[0])
-            brainmask = np.array(brainmask.dataobj)
+            if args.norm is None:
+                L_norm = 'unnorm'
+            else:
+                L_norm = args.norm[0]
             try:
-                result = vb.vb_hybrid(vertices, brainmask, affine, n_cpus, data, args.norm[0], cort_index, args.output[0] + "." + args.norm[0], nib_surf)
+                result = vb.vb_hybrid(vertices, faces, affine, n_cpus, data, L_norm, cort_index, args.tol[0], args.maxiter[0], args.output[0] + "." + L_norm, nib_surf, k=3, debug=args.debug)
             except Exception as error:
                 sys.stderr.write(str(error))
                 sys.exit(2)
@@ -179,9 +196,13 @@ def main():
                 quit()
             # Read labels
             _, labels = io.open_gifti(args.mask[0])
-            cort_index = np.array(labels, np.bool)
+            cort_index = np.array(labels, bool)
+            if args.norm is None:
+                L_norm = 'unnorm'
+            else:
+                L_norm = args.norm[0]
             try:
-                result = vb.vb_index(vertices, faces, n_cpus, data, args.norm[0], cort_index, args.output[0] + "." + args.norm[0], nib_surf)
+                result = vb.vb_index(vertices, faces, n_cpus, data, L_norm, cort_index, args.tol[0], args.maxiter[0], args.output[0] + "." + L_norm, nib_surf)
             except Exception as error:
                 sys.stderr.write(str(error))
                 sys.exit(2)
@@ -194,8 +215,12 @@ def main():
             quit()
         nib, Z = io.open_gifti(args.clusters[0])
         Z = np.array(Z, dtype=np.int)
+        if args.norm is None:
+            L_norm = 'geig'
+        else:
+            L_norm = args.norm[0]
         try:
-            result = vb.vb_cluster(vertices, faces, n_cpus, data, Z, args.norm[0], args.output[0] + "." + args.norm[0], nib_surf)
+            result = vb.vb_cluster(False, vertices, faces, n_cpus, data, Z, L_norm, args.tol[0], args.maxiter[0], args.output[0] + "." + L_norm, nib_surf)
         except Exception as error:
             sys.stderr.write(str(error))
             sys.exit(2)

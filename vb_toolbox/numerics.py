@@ -2,13 +2,15 @@
 # -*- coding: utf-8 -*-
 # vim:fenc=utf-8
 #
-# Copyright © 2019 Lucas Costa Campos <rmk236@gmail.com>
+# Copyright © 2022 VB Index Team
 #
 # Distributed under terms of the GNU license.
 
 import numpy as np
+import scipy
 import scipy.linalg as spl
 import warnings
+from scipy.sparse.linalg import lobpcg
     
 class TimeSeriesTooShortError(Exception):
     """Raised when the time series in the input data have less than three elements"""
@@ -39,70 +41,7 @@ def force_symmetric(M):
     return triu_M + diag_M + triu_M.transpose()
     
 
-def solve_general_eigenproblem(Q, D=None, is_symmetric=True):
-
-    """Solve the general eigenproblem.
-
-    Solves the general eigenproblem Qx = lambda*Dx. The eigenvectors returned are
-    unitary in the norm induced by the matrix D. The eigenvalues are sorted in
-    ascending order, with the eigenvectors sorted accordingly. If D is not set, 
-    the identity matrix is assumed.
-
-    Parameters
-    ----------
-
-    Q: (M, M) numpy array
-       Main matrix
-    D: (M, M) numpy array
-       Numpy array with matrix. If not set, this function will solve the
-       standard eigenproblem (Qx = lambda*x)
-    is_symmetric: boolean
-                  Indicates whether Q *and* D are symmetric. If set, the 
-                  program will use a much faster, but less general,
-                  algorithm
-
-    Returns
-    -------
-    eigenvalues: numpy array with eigenvalues
-    eigenvectors: numpy array with eigenvectors
-                  Note: The matrix is transposed in relation to standard Numpy
-    """
-        
-    # By default, spl.eig returns eigenvectors normalised according to the Frobenius
-    # norm, while Matlab (and spl.eigh) returns them normalised by the norm induced by D.
-    # We convert to the Matlab version for easier comparison.
-
-    if is_symmetric:
-        eigenvalues, eigenvectors = spl.eigh(Q, D, check_finite=False)
-    else:
-        eigenvalues, eigenvectors = spl.eig(Q, D, check_finite=False)
-        
-    eigenvalues = np.real(eigenvalues)
-    eigenvectors = np.real(eigenvectors)
-    
-    if (is_symmetric == False) and (D is not None):
-        for i in range(eigenvectors.shape[1]):
-            e = eigenvectors[:, i]
-            n = np.matmul(e.transpose(), np.matmul(D, e))
-            eigenvectors[:, i] = e/np.sqrt(n)
-
-    # As a general recap. According to the scipy documentation,
-    # A   vr[:,i] = w[i] B vr[:,i]
-    # That is, the index of the eigenvector is the second index.
-    # Thus, when we need to sort the eigenvectors, we only need to
-    # sort in the second index.
-   
-    # Sort eigen pairs in increasing order of eigenvalues
-    sort_eigen = np.argsort(eigenvalues)
-    eigenvalues = eigenvalues[sort_eigen]
-    normalisation_factor = np.average(eigenvalues[1:])
-    eigenvalues = eigenvalues/normalisation_factor
-    eigenvectors = eigenvectors[:, sort_eigen]
-
-    return eigenvalues, eigenvectors
-    
-
-def get_fiedler_eigenpair(Q, D=None, is_symmetric=True):
+def get_fiedler_eigenpair(method, full_brain, Q, D=None, is_symmetric=True, tol='def_tol', maxiter=50):
 
     """Solve the general eigenproblem to find the Fiedler vector and the corresponding eigenvalue.
 
@@ -128,29 +67,44 @@ def get_fiedler_eigenpair(Q, D=None, is_symmetric=True):
     fiedler_vector: (M) numpy array
                     The Fiedler vector
     """
-    
     if is_symmetric:
-        eigenvalues, eigenvectors = spl.eigh(Q, D, check_finite=False)
+        
+        if full_brain == True:
+            X = np.random.rand(Q.shape[0],2)
+            tol_standard = np.sqrt(1e-15) * Q.shape[0]
+            if tol == 'def_tol':
+                tol = tol_standard*(10**(-3))
+            eigenvalues, eigenvectors = lobpcg(Q, X, B=D, M=None, Y=None, tol=tol, maxiter=maxiter, largest=False, verbosityLevel=0, retLambdaHistory=False, retResidualNormsHistory=False)
+        else:
+            eigenvalues, eigenvectors = spl.eigh(Q, D, check_finite=False)
+            
     else:
         eigenvalues, eigenvectors = spl.eig(Q, D, check_finite=False)
-        
+            
     eigenvalues = np.real(eigenvalues)
     eigenvectors = np.real(eigenvectors)
     
     sort_eigen = np.argsort(eigenvalues)
     eigenvalues = eigenvalues[sort_eigen]
-    normalisation_factor = np.average(eigenvalues[1:])
+    
+    dim = Q.shape[0]
+    if method == 'unnorm':
+        normalisation_factor = dim
+    else:
+        normalisation_factor = dim/(dim-1.)
+
     second_smallest_eigval = eigenvalues[1]/normalisation_factor
     
     fiedler_vector = eigenvectors[:, sort_eigen[1]]
-    if (is_symmetric == False) and (D is not None):
-        n = np.matmul(fiedler_vector.transpose(), np.matmul(D, fiedler_vector))
-        fiedler_vector = fiedler_vector/np.sqrt(n)
+    if D is None:
+        D = np.identity(dim)
+    n = np.matmul(fiedler_vector, np.matmul(D, fiedler_vector))
+    fiedler_vector = fiedler_vector/np.sqrt(n)
 
     return second_smallest_eigval, fiedler_vector
     
 
-def spectral_reorder(B, method = 'geig'):
+def spectral_reorder(full_brain, B, residual_tolerance, max_num_iter, method='unnorm'):
     """Computes the spectral reorder of the matrix B
 
     Parameters
@@ -207,31 +161,29 @@ def spectral_reorder(B, method = 'geig'):
         # Method using generalised spectral decomposition of the
         # un-normalised Laplacian (see Shi and Malik, 2000)
 
-        eigenvalue, eigenvector = get_fiedler_eigenpair(Q, D)
+        eigenvalue, eigenvector = get_fiedler_eigenpair(method, full_brain, Q, D, tol=residual_tolerance, maxiter=max_num_iter)
 
-    elif method == 'sym':
+    elif method == 'sym': 
         # Method using the eigen decomposition of the Symmetric Normalized
         # Laplacian. Note that results should be the same as 'geig'
         T = np.sqrt(D)
         L = spl.solve(T, Q)/np.diag(T) #Compute the normalized laplacian
         L = force_symmetric(L) # Force symmetry
 
-        eigenvalue, eigenvector = get_fiedler_eigenpair(L)
+        eigenvalue, eigenvector = get_fiedler_eigenpair(method, full_brain, L, tol=residual_tolerance, maxiter=max_num_iter)
         eigenvector = spl.solve(T, eigenvector) # automatically normalized (i.e. eigenvector.transpose() @ (D @ eigenvector) = 1)
 
     elif method == 'rw':
         # Method using eigen decomposition of Random Walk Normalised Laplacian
-        # This method has not been rigorously tested yet
-
         L = spl.solve(D, Q)
 
-        eigenvalue, eigenvector = get_fiedler_eigenpair(L, is_symmetric=False)
+        eigenvalue, eigenvector = get_fiedler_eigenpair(method, full_brain, L, is_symmetric=False, tol=residual_tolerance, maxiter=max_num_iter)
         n = np.matmul(eigenvector.transpose(), np.matmul(D, eigenvector))
         eigenvector = eigenvector/np.sqrt(n)
 
     elif method == 'unnorm':
 
-        eigenvalue, eigenvector = get_fiedler_eigenpair(Q)
+        eigenvalue, eigenvector = get_fiedler_eigenpair(method, full_brain, Q, tol=residual_tolerance, maxiter=max_num_iter)
 
     else:
         raise NameError("""Method '{}' not allowed. \n
@@ -260,10 +212,9 @@ def create_affinity_matrix(neighborhood, eps=np.finfo(float).eps, verbose=False)
     affinity: (M, M) numpy array
               Affinity matrix of the neighborhood
     """
-    # The following two lines are necessary for when neighborhood is an (M,) array (i.e. it is 1D), in 
+    # The following line is necessary for when neighborhood is an (M,) array (i.e. it is 1D), in 
     # which case it is converted to an (M,1) array. 
-    neighborhood_len = neighborhood.shape[0]
-    neighborhood = neighborhood.reshape(neighborhood_len, -1)
+    neighborhood = np.atleast_2d(neighborhood)
     # Here, the affinity matrix should have n_neighbors x data_size shape
     if neighborhood.shape[1] < 3:
         raise TimeSeriesTooShortError("Time series have less than 3 entries. Your analysis will be compromised!\n")

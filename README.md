@@ -36,20 +36,27 @@ interpreter.
 
 ## Usage of `vb_tool` CLI
 
-If VBIndex was installed via `pip`, the command line program `vb_tool` should
+If VBIndex was installed via `pip` on PyPi, the command line program `vb_tool` should
 be available in your terminal. You can test if the program is correctly
 installed by typing
 
 ```bash
 vb_tool -h
 ```
+Alternatively, if you have downloaded the source code, you can install the program by
+typing
+
+```bash
+pip install py_vb_toolbox/
+```
 
 In your terminal, if you see the following output, the program has been
 properly installed.
 
 ```
-usage: vb_tool [-h] [-j N] [-n norm] [-fb] [-m file] [-c file] -s file -d file
-              -o file
+usage: vb_tool [-h] [-j N] [-n norm] [-fb] [-hy] [-m file] [-c file]
+               [-t tolerance] [-mi max iterations] [-debug] -s file -d file -o
+               file
 
 Calculate the Vogt-Bailey index of a dataset. For more information, check
 https://github.com/VBIndex/py_vb_toolbox.
@@ -57,30 +64,46 @@ https://github.com/VBIndex/py_vb_toolbox.
 optional arguments:
   -h, --help            show this help message and exit
   -j N, --jobs N        Maximum number of jobs to be used. If abscent, one job
-                        per CPU will be spawned
+                        per CPU will be spawned.
   -n norm, --norm norm  Laplacian normalization to be used. Possibilities are
-                        "geig", "unnorm", "rw" and "sym". Defaults to geig.
-  -fb, --full-brain     Calculate full brain feature gradient analyses.
+                        "geig", "unnorm", "rw" and "sym". Defaults to geig for
+                        the full brain and ROI analyses, and to unnorm
+                        otherwise.
+  -fb, --full-brain     Calculate full brain feature gradient analysis.
+  -hy, --hybrid         Calculate VB index with hybrid approach.
   -m file, --mask file  File containing the labels to identify the cortex,
                         rather than the medial brain structures. This flag
-                        must be set for normal analyses and full brain
-                        analyses.
+                        must be set for normal analysis and full brain
+                        analysis.
   -c file, --clusters file
                         File containing the surface clusters. Cluster with
                         index 0 are expected to denote the medial brain
                         structures and will be ignored.
+  -t tolerance, --tol tolerance
+                        Residual tolerance (stopping criterion) for LOBPCG.
+                        Default value = sqrt(10e-18)*n, where n is the number
+                        of nodes per graph.
+  -mi max iterations, --maxiter max iterations
+                        Maximum number of iterations for LOBPCG. Defaults to
+                        50.
+  -debug, --debug       Save additional files for debugging.
 
 required named arguments:
   -s file, --surface file
-                        File containing the surface mesh
-  -d file, --data file  File containing the data over the surface
+                        File containing the surface mesh.
+  -d file, --data file  File containing the data over the surface (or volume
+                        if hybrid).
   -o file, --output file
-                        Base name for the output files
+                        Base name for the output files.
 
 authors:
 
-Lucas da Costa Campos (lqccampos (at) gmail.com) and Claude J Bajada
-(claude.bajada (at) um.edu.mt).
+The VB Index Team (See Contributors Section in the main README)
+
+references:
+
+Bajada, C. J., Campos, L. Q. C., Caspers, S., Muscat, R., Parker, G. J., Ralph, M. A. L., ... & Trujillo-Barreto, N. J. (2020). A tutorial and tool for exploring feature similarity gradients with MRI data. NeuroImage, 221, 117140.
+Ciantar, K. G., Farrugia, C., Scerri, K., Xu, T., & Bajada, C. J. (2020). Geometric effects of volume-to-surface mapping of fMRI data. bioRxiv.
 
 copyright:
 
@@ -95,29 +118,24 @@ FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License along with
 this program. If not, see <https://www.gnu.org/licenses>.
+
 ```
-
-If you copied the program source code, the executable is found in `vb_toolbox/app.py`.
-You can test the program using
-
-```bash
-python3 vb_toolbox/app.py
-```
-
-which should yield the results shown above.
 
 There are three main uses for the `vb_tool`
 
-1. Searchlight analyses
+1. Searchlight analyses (hybrid)
 2. Whole brain feature gradient analyses
 3. Feature gradient analyses in a specified set of regions of interest
+
+We currently recommend using this toolbox for the hybrid Searchlight analysis as it is 
+most tested approach.
 
 ### Searchlight analyses
 
 The per vertex VB-index analyses can be carried with the following command
 
 ```bash
-vb_tool --surface input_data/surface.surf.gii  --data input_data/data.func.gii --mask input_data/cortical_mask.shape.gii --output search_light
+vb_tool --hybrid --surface input_data/surface.surf.gii  --data input_data/data.nii --mask input_data/cortical_mask.shape.gii --output search_light
 ```
 
 The number of vertices in the surface mesh must match the number of entries in
@@ -158,15 +176,6 @@ integer corresponds to a different cluster. The 0th cluster is special, and
 denotes an area which will *not* be analyzed. In these regards, it has a
 similar use to the cortical mask.
 
-## Usage of `vb_tool` GUI
-
-The VB toolbox can be run through a graphical interface. To do this, simply call
-If you have installed the software through pip, then all that needs to be done
-is to run the following command:
-
-```bash
-vb_gui
-```
 
 ## General Notes
 
