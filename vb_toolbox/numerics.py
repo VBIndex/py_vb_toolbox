@@ -136,7 +136,7 @@ def spectral_reorder(full_brain, B, residual_tolerance, max_num_iter, method='un
         warnings.warn("""
         The value 1 is being added to your similarity matrix to ensure positivity.
         This may cause issues with interpretation. Consider inputing a positive matrix""",
-        warnings.UserWarning)
+        UserWarning)
         C = B + 1
     else:
         C = B
