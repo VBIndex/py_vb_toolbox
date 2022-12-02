@@ -76,7 +76,7 @@ def create_parser():
                         structures and will be ignored.""")
                         
     parser.add_argument('-t', '--tol', metavar='tolerance', type=float,
-                        default="def_tol", help="""Residual tolerance (stopping criterion) for LOBPCG. 
+                        help="""Residual tolerance (stopping criterion) for LOBPCG. 
                         Default value = sqrt(10e-18)*n, where n is the number of nodes per graph.""")
                         
     parser.add_argument('-mi', '--maxiter', metavar='max iterations', type=int, default=50,

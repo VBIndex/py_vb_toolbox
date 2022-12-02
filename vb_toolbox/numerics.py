@@ -41,7 +41,7 @@ def force_symmetric(M):
     return triu_M + diag_M + triu_M.transpose()
     
 
-def get_fiedler_eigenpair(method, full_brain, Q, D=None, is_symmetric=True, tol='def_tol', maxiter=50):
+def get_fiedler_eigenpair(method, full_brain, Q, D=None, is_symmetric=True, tol=None, maxiter=50):
 
     """Solve the general eigenproblem to find the Fiedler vector and the corresponding eigenvalue.
 
@@ -72,7 +72,7 @@ def get_fiedler_eigenpair(method, full_brain, Q, D=None, is_symmetric=True, tol=
         if full_brain == True:
             X = np.random.rand(Q.shape[0],2)
             tol_standard = np.sqrt(1e-15) * Q.shape[0]
-            if tol == 'def_tol':
+            if tol is None:
                 tol = tol_standard*(10**(-3))
             eigenvalues, eigenvectors = lobpcg(Q, X, B=D, M=None, Y=None, tol=tol, maxiter=maxiter, largest=False, verbosityLevel=0, retLambdaHistory=False, retResidualNormsHistory=False)
         else:
