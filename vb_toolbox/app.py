@@ -11,7 +11,6 @@ import multiprocessing
 import nibabel
 import numpy as np
 import textwrap as _textwrap
-import vb_toolbox.io as io
 import vb_toolbox.vb_index as vb
 import sys
 import os
@@ -110,7 +109,8 @@ def main():
     args = parser.parse_args()
 
     n_cpus = args.jobs[0]
-    nib_surf, vertices, faces = io.open_gifti_surf(args.surface[0])
+    nib_surf = nibabel.load(args.surface[0])
+    vertices, faces = nib_surf.get_arrays_from_intent('pointset')[0].data,  nib_surf.get_arrays_from_intent('triangle')[0].data
 
     # Get the text contents from the file
     surf_text = open(args.surface[0], 'r', encoding='latin-1')
@@ -152,7 +152,7 @@ def main():
             sys.exit(2)
             quit()
         # Read labels
-        _, labels = io.open_gifti(args.mask[0])
+        labels = nibabel.load(args.mask[0]).darrays[0].data
         cort_index = np.array(labels, bool)
         Z = np.array(cort_index, dtype=int)
         if args.norm is None:
@@ -175,7 +175,7 @@ def main():
                 quit()
           
             # Read labels
-            _, labels = io.open_gifti(args.mask[0])
+            labels = nibabel.load(args.mask[0]).darrays[0].data
             cort_index = np.array(labels, bool)
             # Read brain mask
             if args.norm is None:
@@ -195,7 +195,50 @@ def main():
                 sys.exit(2)
                 quit()
             # Read labels
-            _, labels = io.open_gifti(args.mask[0])
+            pen_gifti(args.mask[0])
+        cort_index = np.array(labels, bool)
+        Z = np.array(cort_index, dtype=int)
+        if args.norm is None:
+            L_norm = 'geig'
+        else:
+            L_norm = args.norm[0]
+        try:
+            result = vb.vb_cluster(True, vertices, faces, n_cpus, data, Z, L_norm, args.tol[0], args.maxiter[0], args.output[0] + "." + L_norm, nib_surf)
+        except Exception as error:
+            sys.stderr.write(str(error))
+            sys.exit(2)
+            quit()
+
+    elif args.clusters is None:
+        if args.hybrid:
+            print("Running searchlight analysis with hybrid approach")
+            if args.mask is None:
+                sys.stderr.write("A mask file must be provided through the --mask flag. See --help")
+                sys.exit(2)
+                quit()
+          
+            # Read labels
+            labels = nibabel.load(args.mask[0]).darrays[0].data
+            cort_index = np.array(labels, bool)
+            # Read brain mask
+            if args.norm is None:
+                L_norm = 'unnorm'
+            else:
+                L_norm = args.norm[0]
+            try:
+                result = vb.vb_hybrid(vertices, faces, affine, n_cpus, data, L_norm, cort_index, args.tol[0], args.maxiter[0], args.output[0] + "." + L_norm, nib_surf, k=3, debug=args.debug)
+            except Exception as error:
+                sys.stderr.write(str(error))
+                sys.exit(2)
+                quit()
+        else:
+            print("Running searchlight analysis")
+            if args.mask is None:
+                sys.stderr.write("A mask file must be provided through the --mask flag. See --help")
+                sys.exit(2)
+                quit()
+            # Read labels
+            labels = nibabel.load(args.mask[0]).darrays[0].data
             cort_index = np.array(labels, bool)
             if args.norm is None:
                 L_norm = 'unnorm'
@@ -213,7 +256,8 @@ def main():
             sys.stderr.write("A cluster file must be provided through the --clusters flag. See --help")
             sys.exit(2)
             quit()
-        nib, Z = io.open_gifti(args.clusters[0])
+        nib = nibabel.load(args.clusters[0])
+        Z = nib.darrays[0].data
         Z = np.array(Z, dtype=np.int)
         if args.norm is None:
             L_norm = 'geig'

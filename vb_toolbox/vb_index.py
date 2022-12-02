@@ -10,7 +10,6 @@ import nibabel
 import numpy as np
 import scipy.linalg as spl
 import traceback
-import vb_toolbox.io as io
 import vb_toolbox.numerics as m
 
 counter = None
@@ -153,7 +152,14 @@ def vb_index(surf_vertices, surf_faces, n_cpus, data, norm, cort_index, residual
 
     # Save file
     if output_name is not None:
-        io.save_gifti(nib_surf, results, output_name + ".vbi.shape.gii")
+        # Create a meta object containing the cortex information
+        if 'AnatomicalStructurePrimary' in og_img.meta:
+            new_meta = nibabel.gifti.gifti.GiftiMetaData(AnatomicalStructurePrimary=nib_surf.meta['AnatomicalStructurePrimary'])
+        else:
+            new_meta = nibabel.gifti.gifti.GiftiMetaData()
+        data_array = nibabel.gifti.gifti.GiftiDataArray(np.array(results, dtype=np.float32))
+        new_nib = nibabel.gifti.gifti.GiftiImage(darrays=[data_array], meta=new_meta)
+        nibabel.save(new_nib,  output_name + ".vbi.shape.gii")
 
     # Cleanup
     pool.close()
@@ -315,8 +321,19 @@ def vb_cluster(full_brain, surf_vertices, surf_faces, n_cpus, data, cluster_inde
 
     # Save file
     if output_name is not None:
-        io.save_gifti(nib_surf, results_eigenvalues, output_name + ".vb-cluster.value.shape.gii")
-        io.save_gifti(nib_surf, results_eigenvectors, output_name + ".vb-cluster.vector.shape.gii")
+        # Create a meta object containing the cortex information
+        if 'AnatomicalStructurePrimary' in og_img.meta:
+            new_meta = nibabel.gifti.gifti.GiftiMetaData(AnatomicalStructurePrimary=nib_surf.meta['AnatomicalStructurePrimary'])
+        else:
+            new_meta = nibabel.gifti.gifti.GiftiMetaData()
+
+        data_array = nibabel.gifti.gifti.GiftiDataArray(np.array(results_eigenvalues, dtype=np.float32))
+        new_nib = nibabel.gifti.gifti.GiftiImage(darrays=[data_array], meta=new_meta)
+        nibabel.save(new_nib,  output_name + ".vb-cluster.value.shape.gii")
+
+        data_array = nibabel.gifti.gifti.GiftiDataArray(np.array(results_eigenvectors, dtype=np.float32))
+        new_nib = nibabel.gifti.gifti.GiftiImage(darrays=[data_array], meta=new_meta)
+        nibabel.save(new_nib,  output_name + ".vb-cluster.vector.shape.gii")
 
     # Cleanup
     pool.close()
@@ -514,8 +531,19 @@ def vb_hybrid(surf_vertices, surf_faces, affine, n_cpus, data, norm, cort_index,
     
     # Save file
     if output_name is not None:
-        io.save_gifti(nib_surf, results, output_name + ".vbi-hybrid.shape.gii")
-        io.save_gifti(nib_surf, n_neigh, output_name + ".neighbors.shape.gii")
+        # Create a meta object containing the cortex information
+        if 'AnatomicalStructurePrimary' in og_img.meta:
+            new_meta = nibabel.gifti.gifti.GiftiMetaData(AnatomicalStructurePrimary=nib_surf.meta['AnatomicalStructurePrimary'])
+        else:
+            new_meta = nibabel.gifti.gifti.GiftiMetaData()
+
+        data_array = nibabel.gifti.gifti.GiftiDataArray(np.array(results, dtype=np.float32))
+        new_nib = nibabel.gifti.gifti.GiftiImage(darrays=[data_array], meta=new_meta)
+        nibabel.save(new_nib,  output_name + ".vbi-hybrid.shape.gii")
+
+        data_array = nibabel.gifti.gifti.GiftiDataArray(np.array(n_neigh, dtype=np.float32))
+        new_nib = nibabel.gifti.gifti.GiftiImage(darrays=[data_array], meta=new_meta)
+        nibabel.save(new_nib,  output_name + ".neighbors.shape.gii")
         if debug:
             ribbon = np.zeros([data.shape[0],data.shape[1],data.shape[2]])
             ribbon[coords[:,0], coords[:,1], coords[:,2]] = 1
