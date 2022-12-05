@@ -132,14 +132,14 @@ def main():
 
     nib = nibabel.load(args.data)
     if args.hybrid:
-        if not args.data.lower().endswith('.nii', '.nii.gz'):
+        if not args.data.lower().endswith(('.nii', '.nii.gz')):
             sys.stderr.write("The input data must be volumetric (in NIfTI format) when using the hybrid searchlight.")
             sys.exit(2)
             quit()
         data = np.array(nib.dataobj)
         affine = nib.affine
     else:
-        if not args.data.lower().endswith('.gii'):
+        if not args.data.lower().endswith(('.gii')):
             sys.stderr.write("The input data must be in GIFTI format")
             sys.exit(2)
             quit()
