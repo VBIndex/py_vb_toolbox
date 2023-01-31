@@ -64,6 +64,15 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "jschewts",
+      "name": "jschewts",
+      "avatar_url": "https://avatars.githubusercontent.com/u/68106439?v=4",
+      "profile": "https://github.com/jschewts",
+      "contributions": [
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 7,
@@ -71,5 +80,6 @@
   "projectOwner": "VBIndex",
   "repoType": "github",
   "repoHost": "https://github.com",
-  "skipCi": true
+  "skipCi": true,
+  "commitConvention": "angular"
 }
