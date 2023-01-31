@@ -1,0 +1,4 @@
+[run]
+source = ./vb_toolbox
+omit = test/*
+command_line = -m unittest discover -s test -b
