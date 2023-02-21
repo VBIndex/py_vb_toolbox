@@ -73,6 +73,15 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "kscerri",
+      "name": "Kenneth Scerri",
+      "avatar_url": "https://avatars.githubusercontent.com/u/153515?v=4",
+      "profile": "http://www.kscerri.com/Personal/index.html",
+      "contributions": [
+        "projectManagement"
+      ]
     }
   ],
   "contributorsPerLine": 7,
