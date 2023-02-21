@@ -1,6 +1,6 @@
 
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
-[![All Contributors](https://img.shields.io/badge/all_contributors-7-orange.svg?style=flat-square)](#contributors-)
+[![All Contributors](https://img.shields.io/badge/all_contributors-8-orange.svg?style=flat-square)](#contributors-)
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
 
 [![DOI](https://zenodo.org/badge/224148416.svg)](https://zenodo.org/badge/latestdoi/224148416) [![PyPI version](https://badge.fury.io/py/vb-toolbox.svg)](https://badge.fury.io/py/vb-toolbox)
@@ -257,6 +257,9 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/paola-g"><img src="https://avatars.githubusercontent.com/u/7580862?v=4?s=100" width="100px;" alt="paola-g"/><br /><sub><b>paola-g</b></sub></a><br /><a href="https://github.com/VBIndex/py_vb_toolbox/commits?author=paola-g" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/ChristineFarrugia"><img src="https://avatars.githubusercontent.com/u/83232978?v=4?s=100" width="100px;" alt="ChristineFarrugia"/><br /><sub><b>ChristineFarrugia</b></sub></a><br /><a href="https://github.com/VBIndex/py_vb_toolbox/commits?author=ChristineFarrugia" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/jschewts"><img src="https://avatars.githubusercontent.com/u/68106439?v=4?s=100" width="100px;" alt="jschewts"/><br /><sub><b>jschewts</b></sub></a><br /><a href="https://github.com/VBIndex/py_vb_toolbox/commits?author=jschewts" title="Code">💻</a></td>
+    </tr>
+    <tr>
+      <td align="center" valign="top" width="14.28%"><a href="http://www.kscerri.com/Personal/index.html"><img src="https://avatars.githubusercontent.com/u/153515?v=4?s=100" width="100px;" alt="Kenneth Scerri"/><br /><sub><b>Kenneth Scerri</b></sub></a><br /><a href="#projectManagement-kscerri" title="Project Management">📆</a></td>
     </tr>
   </tbody>
 </table>
