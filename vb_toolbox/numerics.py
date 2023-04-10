@@ -139,13 +139,20 @@ def get_fiedler_eigenpair(Q, D=None, is_symmetric=True):
     
     sort_eigen = np.argsort(eigenvalues)
     eigenvalues = eigenvalues[sort_eigen]
-    normalisation_factor = np.average(eigenvalues[1:])
+    
+    dim = Q.shape[0]
+    if D is None:
+        normalisation_factor = dim
+    else:
+        normalisation_factor = dim/(dim-1.)
+        
     second_smallest_eigval = eigenvalues[1]/normalisation_factor
     
     fiedler_vector = eigenvectors[:, sort_eigen[1]]
-    if (is_symmetric == False) and (D is not None):
-        n = np.matmul(fiedler_vector.transpose(), np.matmul(D, fiedler_vector))
-        fiedler_vector = fiedler_vector/np.sqrt(n)
+    if D is None:
+        D = np.identity(dim)
+    n = np.matmul(fiedler_vector, np.matmul(D, fiedler_vector))
+    fiedler_vector = fiedler_vector/np.sqrt(n)
 
     return second_smallest_eigval, fiedler_vector
     
