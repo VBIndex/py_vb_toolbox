@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="vb_toolbox",
-    version="2.0.0-local_gradients",
+    version="2.0.0.post0",
     author="The BOB lab",
     author_email="team@boblab.info",
     description="Library and command-line tool to calculate the Vogt-Bailey index of a dataset",
