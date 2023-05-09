@@ -5,9 +5,9 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="vb_toolbox",
-    version="2.1.0",
-    author="Lucas da Costa Campos",
-    author_email="lqccampos@gmail.com",
+    version="2.1.1",
+    author="The BOB Lab",
+    author_email="team@boblab.info",
     description="Library and command-line tool to calculate the Vogt-Bailey index of a dataset",
     long_description=long_description,
     long_description_content_type="text/markdown",
