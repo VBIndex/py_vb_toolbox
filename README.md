@@ -11,8 +11,8 @@ Vogt-Bailey index toolbox in Python
 
 ## Installation
 
-It is possible to simply copy the folder vb_toobox to your project folder and
-proceed from there. If this is the case, be sure you have the following
+It is possible to simply copy the folder `vb_toolbox` to your project folder and
+proceed from there. If you take this approach, be sure you have the following
 packages installed
 
 ```
@@ -24,7 +24,7 @@ pillow
 psutil
 ```
 
-The preferred way to install is by cloning this branch (using `git clone -b Local-gradients-paper` followed by the repository url)
+The preferred way to install the toolbox is by cloning this branch (using `git clone -b Local-gradients-paper` followed by the repository url)
 into a folder called `vb_gradients` and then simply typing (from inside `vb_gradients`)
 
 ```bash
