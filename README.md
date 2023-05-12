@@ -24,7 +24,7 @@ pillow
 psutil
 ```
 
-The preferred way to install is by cloning this branch (using git clone -b Local-gradients-paper <repository url>)
+The preferred way to install is by cloning this branch (using git clone -b Local-gradients-paper followed by the repository url)
 into a folder called vb_gradients and then simply typing (from inside vb_gradients)
 
 ```bash
