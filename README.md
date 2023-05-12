@@ -24,10 +24,11 @@ pillow
 psutil
 ```
 
-The preferred way to install is through pip. It is as easy as
+The preferred way to install is by cloning this branch (using git clone -b Local-gradients-paper <repository url>)
+into a folder called vb_gradients and then simply typing (from inside vb_gradients)
 
 ```bash
-pip install vb_toolbox
+pip3 install py_vb_toolbox/
 ```
 
 If your pip is properly configured, you can now use the program `vb_tool` from
