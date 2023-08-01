@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # vim:fenc=utf-8
 #
-# Copyright © 2019 Lucas Costa Campos <l.campos@fz-juelich.de>
+# Copyright © 2023 VB Index Team
 #
 # Distributed under terms of the GNU license.
 
@@ -28,7 +28,7 @@ class MultilineFormatter(argparse.HelpFormatter):
 
 def create_parser():
     authors = '''authors:
-    |n   Lucas da Costa Campos (lqccampos (at) gmail.com) and Claude J Bajada (claude.bajada (at) um.edu.mt).'''
+    |n   The VB Index Team (See Contributors Section in the main README.)'''
     copyright = '''copyright:|n
         This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -41,9 +41,13 @@ def create_parser():
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses>.
     '''
+    references = '''references:|n
+        Bajada, C. J., Campos, L. Q. C., Caspers, S., Muscat, R., Parker, G. J., Ralph, M. A. L., ... & Trujillo-Barreto, N. J. (2020). A tutorial and tool for exploring feature similarity gradients with MRI data. NeuroImage, 221, 117140.|n
+        Ciantar, K. G., Farrugia, C., Scerri, K., Xu, T., & Bajada, C. J. (2020). Geometric effects of volume-to-surface mapping of fMRI data. bioRxiv.
+    '''
 
     parser = argparse.ArgumentParser(description='Calculate the Vogt-Bailey index of a dataset. For more information, check https://github.com/VBIndex/py_vb_toolbox.',
-                                     epilog=authors + " |n " + copyright,
+                                     epilog=authors + " |n " + references + " |n " + copyright,
                                      formatter_class=MultilineFormatter)
     parser.add_argument('-j', '--jobs', metavar='N', type=int, nargs=1,
                         default=[multiprocessing.cpu_count()], help="""Maximum
@@ -116,9 +120,9 @@ def main():
             hemi = 'CortexRight'
             break
 
-    # Add the cortex information to the beginning of the meta data
+    # Add the cortex information to the meta data
     if hemi:
-        nib_surf.meta.data.insert(0, nibabel.gifti.GiftiNVPairs('AnatomicalStructurePrimary', hemi))
+        nib_surf.meta['AnatomicalStructurePrimary'] = hemi
 
     nib = nibabel.load(args.data[0])
     if args.hybrid:
@@ -139,7 +143,7 @@ def main():
         # Read labels
         _, labels = io.open_gifti(args.mask[0])
         cort_index = np.array(labels, bool)
-        Z = np.array(cort_index, dtype=np.int)
+        Z = np.array(cort_index, dtype=int)
         try:
             result = vb.vb_cluster(vertices, faces, n_cpus, data, Z, args.norm[0], args.output[0] + "." + args.norm[0], nib_surf)
         except Exception as error:
