@@ -39,7 +39,7 @@ def force_symmetric(M):
     return triu_M + diag_M + triu_M.transpose()
         
 
-def get_fiedler_eigenpair(Q, D=None, is_symmetric=True):
+def get_fiedler_eigenpair(method, Q, D=None, is_symmetric=True):
 
     """Solve the general eigenproblem to find the Fiedler vector and the corresponding eigenvalue.
 
@@ -78,7 +78,7 @@ def get_fiedler_eigenpair(Q, D=None, is_symmetric=True):
     eigenvalues = eigenvalues[sort_eigen]
     
     dim = Q.shape[0]
-    if D is None:
+    if method == 'unnorm':
         normalisation_factor = dim
     else:
         normalisation_factor = dim/(dim-1.)
@@ -151,7 +151,7 @@ def spectral_reorder(B, method = 'geig'):
         # Method using generalised spectral decomposition of the
         # un-normalised Laplacian (see Shi and Malik, 2000)
 
-        eigenvalue, eigenvector = get_fiedler_eigenpair(Q, D)
+        eigenvalue, eigenvector = get_fiedler_eigenpair(method, Q, D)
 
     elif method == 'sym':
         # Method using the eigen decomposition of the Symmetric Normalized
@@ -160,7 +160,7 @@ def spectral_reorder(B, method = 'geig'):
         L = spl.solve(T, Q)/np.diag(T) #Compute the normalized laplacian
         L = force_symmetric(L) # Force symmetry
 
-        eigenvalue, eigenvector = get_fiedler_eigenpair(L)
+        eigenvalue, eigenvector = get_fiedler_eigenpair(method, L)
         eigenvector = spl.solve(T, eigenvector) # automatically normalized (i.e. eigenvector.transpose() @ (D @ eigenvector) = 1)
 
     elif method == 'rw':
@@ -169,13 +169,13 @@ def spectral_reorder(B, method = 'geig'):
 
         L = spl.solve(D, Q)
 
-        eigenvalue, eigenvector = get_fiedler_eigenpair(L, is_symmetric=False)
+        eigenvalue, eigenvector = get_fiedler_eigenpair(method, L, is_symmetric=False)
         n = np.matmul(eigenvector.transpose(), np.matmul(D, eigenvector))
         eigenvector = eigenvector/np.sqrt(n)
 
     elif method == 'unnorm':
 
-        eigenvalue, eigenvector = get_fiedler_eigenpair(Q)
+        eigenvalue, eigenvector = get_fiedler_eigenpair(method, Q)
 
     else:
         raise NameError("""Method '{}' not allowed. \n
