@@ -177,7 +177,6 @@ def main():
             # Read labels
             _, labels = io.open_gifti(args.mask[0])
             cort_index = np.array(labels, bool)
-            # Read brain mask
             if args.norm is None:
                 L_norm = 'unnorm'
             else:
