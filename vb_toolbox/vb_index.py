@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # vim:fenc=utf-8
 #
-# Copyright © 2019 Lucas Costa Campos <rmk236@gmail.com>
+# Copyright © 2023 VB Index Team
 #
 # Distributed under terms of the GNU license.
 
@@ -66,8 +66,8 @@ def vb_index_internal_loop(i0, iN, surf_faces, data, norm, print_progress=False)
             I = np.unique(surf_faces[neighbour_idx, :])
             neighborhood = data[I]
             if len(neighborhood) == 0:
-                print("Warning: no neighborhood")
-                return [0]
+                print("Warning: no neighborhood for vertex:",i)
+                continue
 
             # Calculate the second smallest eigenvalue
             affinity = m.create_affinity_matrix(neighborhood)
@@ -371,21 +371,20 @@ def vb_hybrid_internal_loop(i0, iN, surf_vertices, brain_mask, data, norm, print
         try:
             neighborhood = get_neighborhood(data,surf_vertices[i,:],brain_mask)
             if len(neighborhood) == 0:
-                print("Warning: no neighborhood")
+                print("Warning: no neighborhood for vertex:",i)
                 loc_result[idx] = np.nan
                 continue
             affinity = m.create_affinity_matrix(neighborhood)
             
             if affinity.shape[0] > 3:
-                #tr_row, tr_col = np.triu_indices(affinity.shape[0], k=1)
             
                 # Calculate the second smallest eigenvalue
                 _, _, eigenvalue, _ = m.spectral_reorder(affinity, norm)
                 # return [0]
                 # Store the result of this run
                 loc_result[idx] = eigenvalue
-                #loc_result[idx] = np.mean(affinity[tr_row, tr_col])
             else:
+		print("Warning: too few neighbors for vertex:",i)
                 loc_result[idx] = np.nan
         except m.TimeSeriesTooShortError as error:
             raise error
