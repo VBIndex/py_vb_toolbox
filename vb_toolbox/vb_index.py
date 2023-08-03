@@ -371,7 +371,7 @@ def vb_hybrid_internal_loop(i0, iN, surf_vertices, brain_mask, data, norm, print
         try:
             neighborhood = get_neighborhood(data,surf_vertices[i,:],brain_mask)
             if len(neighborhood) == 0:
-                print("Warning: no neighborhood for vertex:",i)
+		print("Warning: no neighborhood for vertex:",i)
                 loc_result[idx] = np.nan
                 continue
             affinity = m.create_affinity_matrix(neighborhood)
@@ -385,7 +385,7 @@ def vb_hybrid_internal_loop(i0, iN, surf_vertices, brain_mask, data, norm, print
         	loc_result[idx] = eigenvalue
             else:
 		print("Warning: too few neighbors for vertex:",i)
-        	loc_result[idx] = np.nan
+		loc_result[idx] = np.nan
         except m.TimeSeriesTooShortError as error:
             raise error
         except Exception:
