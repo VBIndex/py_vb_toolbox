@@ -377,15 +377,12 @@ def vb_hybrid_internal_loop(i0, iN, surf_vertices, brain_mask, data, norm, print
             affinity = m.create_affinity_matrix(neighborhood)
             
             if affinity.shape[0] > 3:
-            
                 # Calculate the second smallest eigenvalue
                 _, _, eigenvalue, _ = m.spectral_reorder(affinity, norm)
-        	# return [0]
-                # Store the result of this run
-        	loc_result[idx] = eigenvalue
+                loc_result[idx] = eigenvalue
             else:
-		print("Warning: too few neighbors for vertex:",i)
-		loc_result[idx] = np.nan
+                print("Warning: too few neighbors for vertex:",i)
+                loc_result[idx] = np.nan
         except m.TimeSeriesTooShortError as error:
             raise error
         except Exception:
