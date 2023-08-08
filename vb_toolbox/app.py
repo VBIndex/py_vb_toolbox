@@ -51,49 +51,49 @@ def create_parser():
                                      formatter_class=MultilineFormatter)
     parser.add_argument('-j', '--jobs', metavar='N', type=int, nargs=1,
                         default=[multiprocessing.cpu_count()], help="""Maximum
-                        number of jobs to be used. If abscent, one job per CPU
-                        will be spawned""")
+                        number of jobs to be used. If absent, one job per CPU
+                        will be spawned.""")
 
     parser.add_argument('-n', '--norm', metavar='norm', type=str, nargs=1,
                         default=["geig"], help="""Laplacian normalization to be
-                        used. Possibilities are "geig", "unnorm", "rw" and
+                        employed. Possibilities are "geig", "unnorm", "rw" and
                         "sym". Defaults to geig.""")
 
     parser.add_argument('-fb', '--full-brain', action='store_true',
                         help="""Calculate full brain feature gradient analysis.""")
 
     parser.add_argument('-hy', '--hybrid', action='store_true',
-                        help="""Calculate VB index with hybrid approach.""")
+                        help="""Calculate searchlight VB index with hybrid approach.""")
 
     parser.add_argument('-vm', '--volmask', metavar='file', type=str,
-                               nargs=1, default=None, help="""Nifti file containing the whole brain mask
-                               in volumetric space. This flag must be set if computing hybrid VB""")
+                               nargs=1, default=None, help="""Nifti file containing a full brain mask
+                               in volumetric space. This flag must be set if computing hybrid VB.""")
 
     parser.add_argument('-m', '--mask', metavar='file', type=str,
-                               nargs=1, help="""File containing the labels to
+                               nargs=1, help="""File storing the labels to
                                identify the cortex, rather than the medial
                                brain structures. This flag must be set for
-                               normal analysis and full brain analysis.""")
+                               searchlight and full brain analyses.""")
 
     parser.add_argument('-c', '--clusters', metavar='file', type=str, nargs=1, default=None,
-                        help="""File containing the surface clusters. Cluster
-                        with index 0 are expected to denote the medial brain
+                        help="""File specifying the surface clusters. The cluster
+                        with index 0 is expected to denote the medial brain
                         structures and will be ignored.""")
 
     requiredNamed = parser.add_argument_group('required named arguments')
 
     requiredNamed.add_argument('-s', '--surface', metavar='file', type=str,
                                nargs=1, help="""File containing the surface
-                                              mesh""", required=True)
+                                              mesh.""", required=True)
 
     requiredNamed.add_argument('-d', '--data', metavar='file', type=str,
                                nargs=1, help="""File containing the data over
-                                              the surface (or volume if hybrid)""", required=True)
+                                              the surface (or volume, in the case of the hybrid approach).""", required=True)
 
 
     requiredNamed.add_argument('-o', '--output', metavar='file', type=str,
                                nargs=1, help="""Base name for the
-                                              output files""", required=True)
+                                              output files.""", required=True)
 
     return parser
 
