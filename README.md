@@ -52,7 +52,7 @@ properly installed.
 usage: vb_tool [-h] [-j N] [-n norm] [-fb] [-hy] [-vm file] [-m file] [-c file] -s file -d file
               -o file
 
-Calculate the Vogt-Bailey index of a dataset. For more information, check
+Calculate the Vogt-Bailey index of a dataset. For more information, refer to
 https://github.com/VBIndex/py_vb_toolbox.
 
 optional arguments:
