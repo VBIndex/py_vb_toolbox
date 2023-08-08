@@ -46,7 +46,7 @@ def create_parser():
         Ciantar, K. G., Farrugia, C., Scerri, K., Xu, T., & Bajada, C. J. (2020). Geometric effects of volume-to-surface mapping of fMRI data. bioRxiv.
     '''
 
-    parser = argparse.ArgumentParser(description='Calculate the Vogt-Bailey index of a dataset. For more information, check https://github.com/VBIndex/py_vb_toolbox.',
+    parser = argparse.ArgumentParser(description='Calculate the Vogt-Bailey index of a dataset. For more information, refer to https://github.com/VBIndex/py_vb_toolbox.',
                                      epilog=authors + " |n " + references + " |n " + copyright,
                                      formatter_class=MultilineFormatter)
     parser.add_argument('-j', '--jobs', metavar='N', type=int, nargs=1,
