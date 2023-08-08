@@ -14,7 +14,6 @@ setuptools.setup(
     url="https://github.com/VBIndex/py_vb_toolbox",
     include_package_data=True,
     packages=["vb_toolbox"],
-    package_data={"vb_toolbox": ["vb_gui_icon.png"]},
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
@@ -34,8 +33,5 @@ setuptools.setup(
         'console_scripts':[
             'vb_tool = vb_toolbox.app:main',
         ],
-        "gui_scripts":[
-            "vb_gui = vb_toolbox.app_gui:main",
-        ]
     }
 )
