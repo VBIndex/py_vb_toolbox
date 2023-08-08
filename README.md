@@ -56,35 +56,38 @@ Calculate the Vogt-Bailey index of a dataset. For more information, check
 https://github.com/VBIndex/py_vb_toolbox.
 
 optional arguments:
-  -h, --help            show this help message and exit
-  -j N, --jobs N        Maximum number of jobs to be used. If abscent, one job
-                        per CPU will be spawned
-  -n norm, --norm norm  Laplacian normalization to be used. Possibilities are
+  -h, --help            Show this help message and exit.
+  -j N, --jobs N        Maximum number of jobs to be used. If absent, one job
+                        per CPU will be spawned.
+  -n norm, --norm norm  Laplacian normalization to be employed. Possibilities are
                         "geig", "unnorm", "rw" and "sym". Defaults to geig.
-  -fb, --full-brain     Calculate full brain feature gradient analyses.
-  -hy, --hybrid         Calculate VB index with hybrid approach.
+  -fb, --full-brain     Calculate full brain feature gradient analysis.
+  -hy, --hybrid         Calculate searchlight VB index with hybrid approach.
   -vm file, --volmask file
-                        Nifti file containing the whole brain mask in volumetric space. This flag must be set if computing hybrid VB
-  -m file, --mask file  File containing the labels to identify the cortex,
+                        Nifti file containing a full brain mask in volumetric space. This flag must be set if computing hybrid VB.
+  -m file, --mask file  File storing the labels to identify the cortex,
                         rather than the medial brain structures. This flag
-                        must be set for normal analyses and full brain
-                        analyses.
+                        must be set for searchlight and full brain analyses.
   -c file, --clusters file
-                        File containing the surface clusters. Cluster with
-                        index 0 are expected to denote the medial brain
+                        File specifying the surface clusters. The cluster with
+                        index 0 is expected to denote the medial brain
                         structures and will be ignored.
 
 required named arguments:
   -s file, --surface file
-                        File containing the surface mesh
-  -d file, --data file  File containing the data over the surface
+                        File containing the surface mesh.
+  -d file, --data file  File containing the data over the surface (or volume, in the case of the hybrid approach).
   -o file, --output file
                         Base name for the output files
 
 authors:
 
-Lucas da Costa Campos (lqccampos (at) gmail.com) and Claude J Bajada
-(claude.bajada (at) um.edu.mt).
+The VB Index Team (See Contributors Section in the main README)
+
+references:
+
+Bajada, C. J., Campos, L. Q. C., Caspers, S., Muscat, R., Parker, G. J., Ralph, M. A. L., ... & Trujillo-Barreto, N. J. (2020). A tutorial and tool for exploring feature similarity gradients with MRI data. NeuroImage, 221, 117140.
+Ciantar, K. G., Farrugia, C., Scerri, K., Xu, T., & Bajada, C. J. (2020). Geometric effects of volume-to-surface mapping of fMRI data. bioRxiv.
 
 copyright:
 
@@ -111,8 +114,8 @@ python3 vb_toolbox/app.py
 There are three main uses for the `vb_tool`
 
 1. Searchlight analysis (hybrid)
-2. Whole brain feature gradient analysis
-3. Feature gradient analysis in a specified set of regions of interest
+2. Full brain feature gradient analysis
+3. Feature gradient analysis in a specified set of regions of interest (ROI analyis)
 
 We currently recommend using the hybrid searchlight analysis as it is the most tested approach. 
 
@@ -134,7 +137,7 @@ would otherwise influence the analysis of the cortical regions.
 
 To evaluate the ReHo metric [Y. Zang et al. NeuroImage, 22 (1):394, 2004. doi: 10.1016/j.neuroimage.2003.12.030.] at each vertex instead of the VB index, rename the file `vb_index_ReHo.py` to `vb_index.py` and place it inside `vb_toolbox` instead of the original `vb_index.py`. This should be done prior to installation. The command to be executed in this case is identical to the one given above.  
 
-### Whole brain analysis
+### Full brain analysis
 
 To perform full brain feature gradient analysis and extract the associated VB index, the flag 
 `-fb` or `--full-brain` must be set instead of `--hybrid`. Otherwise, the flags are the same as for the searchlight analysis.
@@ -146,7 +149,7 @@ vb_tool --surface input_data/surface.surf.gii  --data input_data/data.func.gii -
 Be warned, however, that this analysis can take long and require a large amount of
 RAM. For data sets with 32k vertices, upwards of 30GB of RAM were used.
 
-### Regions of Interest analysis
+### Regions of Interest (ROI) analysis
 
 Sometimes, one is interested only in a small set of ROIs. In this case, the
 feature gradient map and the associated VB index value for each ROI will be
@@ -187,11 +190,11 @@ on its own depends on the specific analysis being carried out.
 
 1. Searchlight analysis: High level of parallelism. Will spawn as many jobs as
    there are CPUs
-2. Whole brain analysis: Low level of parallelism. Will only spawn one job
+2. Full brain analysis: Low level of parallelism. Will only spawn one job
 3. Region of Interest analysis: Medium level of parallelism. Will spawn as many
    jobs as there are ROIs, or number of CPUS, whichever is the lowest.
 
-Especially for the whole brain analysis, having a well-optimized BLAS
+Especially for the full brain analysis, having a well-optimized BLAS
 installation will greatly accelerate the process, and allow for further
 parallelism.  Both MKL and OpenBLAS have been shown to support fast analysis. If
 you are using the Anaconda distribution, you will have a good BLAS
