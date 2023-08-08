@@ -58,31 +58,32 @@ usage: vb_tool [-h] [-j N] [-n norm] [-fb] [-hy] [-m file] [-c file]
                [-t tolerance] [-mi max iterations] [-debug] -s file -d file -o
                file
 
-Calculate the Vogt-Bailey index of a dataset. For more information, check
+Calculate the Vogt-Bailey index of a dataset. For more information, refer to
 https://github.com/VBIndex/py_vb_toolbox.
 
 optional arguments:
-  -h, --help            show this help message and exit
-  -j N, --jobs N        Maximum number of jobs to be used. If abscent, one job
+  -h, --help            Show this help message and exit.
+  -j N, --jobs N        Maximum number of jobs to be used. If absent, one job
                         per CPU will be spawned.
-  -n norm, --norm norm  Laplacian normalization to be used. Possibilities are
+  -n norm, --norm norm  Laplacian normalization to be employed. Possibilities are
                         "geig", "unnorm", "rw" and "sym". Defaults to geig for
                         the full brain and ROI analyses, and to unnorm
                         otherwise.
   -fb, --full-brain     Calculate full brain feature gradient analysis.
-  -hy, --hybrid         Calculate VB index with hybrid approach.
+  -hy, --hybrid         Calculate searchlight VB index with hybrid approach.
   -m file, --mask file  File containing the labels to identify the cortex,
                         rather than the medial brain structures. This flag
-                        must be set for normal analysis and full brain
-                        analysis.
+                        must be set for the searchlight and full brain
+                        analyses.
   -c file, --clusters file
-                        File containing the surface clusters. Cluster with
-                        index 0 are expected to denote the medial brain
+                        File specifying the surface clusters. The cluster with
+                        index 0 is expected to denote the medial brain
                         structures and will be ignored.
   -t tolerance, --tol tolerance
                         Residual tolerance (stopping criterion) for LOBPCG.
                         Default value = sqrt(10e-18)*n, where n is the number
-                        of nodes per graph.
+                        of nodes per graph. Note that the LOBPCG algorithm is only
+                        utilised for full-brain analysis.
   -mi max iterations, --maxiter max iterations
                         Maximum number of iterations for LOBPCG. Defaults to
                         50.
@@ -124,8 +125,8 @@ this program. If not, see <https://www.gnu.org/licenses>.
 There are three main uses for the `vb_tool`
 
 1. Searchlight analyses (hybrid)
-2. Whole brain feature gradient analyses
-3. Feature gradient analyses in a specified set of regions of interest
+2. Full brain feature gradient analyses
+3. Feature gradient analyses in a specified set of regions of interest (ROI analysis)
 
 We currently recommend using this toolbox for the hybrid Searchlight analysis as it is 
 most tested approach.
@@ -147,7 +148,7 @@ be left out. This is most commonly used to mask out midbrain structures which
 would otherwise influence the analysis of the cortical regions.
 
 
-### Whole brain analyses
+### Full brain analyses
 
 To perform full brain feature gradient analyses and the associated VB-index, the flag 
 `-fb` or `--full-brain` must be set. Otherwise, the flags are the same as in the searchlight analysis.
@@ -159,7 +160,7 @@ vb_tool --surface input_data/surface.surf.gii  --data input_data/data.func.gii -
 Be warned, however, that this analysis can take long, use a large amount of
 RAM. In systems with 32k vertices, upwards of 30GB of RAM were used.
 
-### Regions of Interest analyses
+### Regions of Interest (ROI) analyses
 
 Sometimes, one is interested only in a small set of ROIs. In this case, the
 feature gradient maps and the associated VB-index value for each ROI will be
@@ -201,11 +202,11 @@ on its own depends on the specific analyses being carried out.
 
 1. Searchlight analyses: High level of parallelism. Will spawn as many jobs are
    there are CPUs
-2. Whole brain analyses: Low lever of parallelism. Will only spawn one job
+2. Full brain analyses: Low lever of parallelism. Will only spawn one job
 3. Region of Interest analyses: Medium level of parallelism. Will spawn as many
    jobs as there are ROIs, or number of CPUS, whichever is the lowest.
 
-Specially in the whole brain analyses, having a well optimized BLAS
+Specially in the full brain analyses, having a well optimized BLAS
 installation will grandly accelerate the process, and allow for a further
 paralelism.  Both MKL and OpenBLAS have been shown to offer fast analyses. If
 you are using the Anaconda distribution, you will have a good BLAS
