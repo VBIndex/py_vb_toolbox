@@ -46,39 +46,40 @@ def create_parser():
         Ciantar, K. G., Farrugia, C., Scerri, K., Xu, T., & Bajada, C. J. (2020). Geometric effects of volume-to-surface mapping of fMRI data. bioRxiv.
     '''
     
-    parser = argparse.ArgumentParser(description='Calculate the Vogt-Bailey index of a dataset. For more information, check https://github.com/VBIndex/py_vb_toolbox.',
+    parser = argparse.ArgumentParser(description='Calculate the Vogt-Bailey index of a dataset. For more information, refer to https://github.com/VBIndex/py_vb_toolbox.',
                                      epilog=authors + " |n " + references + " |n " + copyright,
                                      formatter_class=MultilineFormatter)
     parser.add_argument('-j', '--jobs', metavar='N', type=int, nargs=1,
                         default=[multiprocessing.cpu_count()], help="""Maximum
-                        number of jobs to be used. If abscent, one job per CPU
+                        number of jobs to be used. If absent, one job per CPU
                         will be spawned.""")
 
     parser.add_argument('-n', '--norm', metavar='norm', type=str, nargs=1,
                         help="""Laplacian normalization to be
-                        used. Possibilities are "geig", "unnorm", "rw" and
+                        employed. Possibilities are "geig", "unnorm", "rw" and
                         "sym". Defaults to geig for the full brain and ROI analyses, and to unnorm otherwise.""")
 
     parser.add_argument('-fb', '--full-brain', action='store_true',
                         help="""Calculate full brain feature gradient analysis.""")
 
     parser.add_argument('-hy', '--hybrid', action='store_true',
-                        help="""Calculate VB index with hybrid approach.""")
+                        help="""Calculate searchlight VB index with hybrid approach.""")
 
     parser.add_argument('-m', '--mask', metavar='file', type=str,
                                nargs=1, help="""File containing the labels to
                                identify the cortex, rather than the medial
                                brain structures. This flag must be set for
-                               normal analysis and full brain analysis.""")
+                               the searchlight and full brain analyses.""")
 
     parser.add_argument('-c', '--clusters', metavar='file', type=str, nargs=1, default=None,
-                        help="""File containing the surface clusters. Cluster
-                        with index 0 are expected to denote the medial brain
+                        help="""File specifying the surface clusters. The cluster
+                        with index 0 is expected to denote the medial brain
                         structures and will be ignored.""")
                         
     parser.add_argument('-t', '--tol', metavar='tolerance', type=float, nargs=1,
                         default=["def_tol"], help="""Residual tolerance (stopping criterion) for LOBPCG. 
-                        Default value = sqrt(10e-18)*n, where n is the number of nodes per graph.""")
+                        Default value = sqrt(10e-18)*n, where n is the number of nodes per graph. Note that
+                        the LOBPCG algorithm is only utilised for full-brain analysis.""")
                         
     parser.add_argument('-mi', '--maxiter', metavar='max iterations', type=int, nargs=1, default=[50],
                         help="""Maximum number of iterations for LOBPCG. Defaults to 50.""")
