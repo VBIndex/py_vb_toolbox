@@ -58,31 +58,32 @@ usage: vb_tool [-h] [-j N] [-n norm] [-fb] [-hy] [-m file] [-c file]
                [-t tolerance] [-mi max iterations] [-debug] -s file -d file -o
                file
 
-Calculate the Vogt-Bailey index of a dataset. For more information, check
+Calculate the Vogt-Bailey index of a dataset. For more information, refer to
 https://github.com/VBIndex/py_vb_toolbox.
 
 optional arguments:
-  -h, --help            show this help message and exit
-  -j N, --jobs N        Maximum number of jobs to be used. If abscent, one job
+  -h, --help            Show this help message and exit.
+  -j N, --jobs N        Maximum number of jobs to be used. If absent, one job
                         per CPU will be spawned.
-  -n norm, --norm norm  Laplacian normalization to be used. Possibilities are
+  -n norm, --norm norm  Laplacian normalization to be employed. Possibilities are
                         "geig", "unnorm", "rw" and "sym". Defaults to geig for
                         the full brain and ROI analyses, and to unnorm
                         otherwise.
   -fb, --full-brain     Calculate full brain feature gradient analysis.
-  -hy, --hybrid         Calculate VB index with hybrid approach.
+  -hy, --hybrid         Calculate searchlight VB index with hybrid approach.
   -m file, --mask file  File containing the labels to identify the cortex,
                         rather than the medial brain structures. This flag
-                        must be set for normal analysis and full brain
-                        analysis.
+                        must be set for the searchlight and full brain
+                        analyses.
   -c file, --clusters file
-                        File containing the surface clusters. Cluster with
-                        index 0 are expected to denote the medial brain
+                        File specifying the surface clusters. The cluster with
+                        index 0 is expected to denote the medial brain
                         structures and will be ignored.
   -t tolerance, --tol tolerance
                         Residual tolerance (stopping criterion) for LOBPCG.
                         Default value = sqrt(10e-18)*n, where n is the number
-                        of nodes per graph.
+                        of nodes per graph. Note that the LOBPCG algorithm is only
+                        utilised for full-brain analysis.
   -mi max iterations, --maxiter max iterations
                         Maximum number of iterations for LOBPCG. Defaults to
                         50.
@@ -124,8 +125,8 @@ this program. If not, see <https://www.gnu.org/licenses>.
 There are three main uses for the `vb_tool`
 
 1. Searchlight analysis (hybrid)
-2. Whole brain feature gradient analysis
-3. Feature gradient analysis in a specified set of regions of interest
+2. Full brain feature gradient analysis
+3. Feature gradient analysis in a specified set of regions of interest (ROI analysis)
 
 We currently recommend using the hybrid searchlight analysis as it is 
 the most tested approach.
@@ -158,7 +159,7 @@ vb_tool --surface input_data/surface.surf.gii  --data input_data/data.func.gii -
 Be warned, however, that this analysis can take long and require a large amount of
 RAM. For data sets with 32k vertices, upwards of 30GB of RAM were used.
 
-### Regions of Interest analysis
+### Regions of Interest (ROI) analysis
 
 Sometimes, one is interested only in a small set of ROIs. In this case, the
 feature gradient map and the associated VB index value for each ROI will be
@@ -199,8 +200,8 @@ on its own depends on the specific analysis being carried out.
 
 1. Searchlight analysis: High level of parallelism. Will spawn as many jobs as
    there are CPUs
-2. Whole brain analysis: Low level of parallelism. Will only spawn one job
-3. Region of Interest analysis: Medium level of parallelism. Will spawn as many
+2. Full brain analysis: Low level of parallelism. Will only spawn one job
+3. Region of Interest (ROI) analysis: Medium level of parallelism. Will spawn as many
    jobs as there are ROIs, or number of CPUS, whichever is the lowest.
 
 Especially for the whole brain analysis, having a well-optimized BLAS
