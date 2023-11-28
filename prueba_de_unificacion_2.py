@@ -82,8 +82,7 @@ def run_multiprocessing(pool, internal_loop_func, n_items, dn, surf_vertices, su
     for i0 in range(0, n_items, dn):
         iN = min(i0 + dn, n_items)
         if internal_loop_func == "vb_cluster_internal_loop":
-            #threads.append(pool.apply_async(
-                vb_cluster_internal_loop(full_brain, i0, iN, surf_faces, data, cluster_index, norm, residual_tolerance, max_num_iter)#, error_callback=pool_callback))
+            threads.append(pool.apply_async(vb_cluster_internal_loop, (full_brain, i0, iN, surf_faces, data, cluster_index, norm, residual_tolerance, max_num_iter), error_callback=pool_callback))
         elif internal_loop_func == "vb_hybrid_internal_loop":
             threads.append(pool.apply_async(vb_hybrid_internal_loop, (i0, iN, surf_vertices, surf_faces, affine, data, norm, residual_tolerance, max_num_iter, k, debug), error_callback=pool_callback))
         else:
@@ -127,7 +126,7 @@ def process_vb_cluster_results(results, surf_vertices, cluster_index, output_nam
     
     #results_eigenvectors_l = [[], []]
     # Save files if output_name is provided
-    ipdb.set_trace()
+    #ipdb.set_trace()
     for r, rv in enumerate(results):
         results_v2[r] = rv[0][0]
         results_eigenvectors_l[r] = rv[0][1]
@@ -356,9 +355,10 @@ def vb_cluster_internal_loop(full_brain, idx_cluster_0, idx_cluster_N, surf_face
                    Resulting VB index and Fiedler vector for each of the clusters in range
     """
     diff = idx_cluster_N - idx_cluster_0
-    loc_result = np.empty(((diff+1)*2,), dtype=object)
-    lr_1 = np.empty(((diff+1),), dtype=object)
-    lr_2 = np.empty(((diff+1),), dtype=object)
+    loc_result = []
+    #loc_result = np.empty(((diff+1)*2,), dtype=object)
+    #lr_1 = np.empty(((diff+1),), dtype=object)
+    #lr_2 = np.empty(((diff+1),), dtype=object)
     cluster_labels = np.unique(cluster_index)
 
     for idx in range(diff):
@@ -366,8 +366,9 @@ def vb_cluster_internal_loop(full_brain, idx_cluster_0, idx_cluster_N, surf_face
         i = idx + idx_cluster_0
 
         if(cluster_labels[i] == 0):
-            lr_1[0] = []
-            lr_2[0] = []
+            loc_result.append(([], []))
+            #lr_1[0] = []
+            #lr_2[0] = []
             continue
         try:
             # Get neighborhood and its data
@@ -382,17 +383,18 @@ def vb_cluster_internal_loop(full_brain, idx_cluster_0, idx_cluster_N, surf_face
             # size, as the clusters might be of different sizes
             val = eigenvalue
             vel = eigenvector
-            lr_1[idx] = val
-            lr_2[idx] = vel
+            loc_result.append((val, vel))
+            #lr_1[idx] = val
+            #lr_2[idx] = vel
         except TimeSeriesTooShortError as error:
             raise error
 
-    for i in range(len(lr_1)): 
-        if i != 0:
-            loc_result[i+i] = lr_1[i]
-            loc_result[i+i+1] = lr_2[i]
-        loc_result[i] = lr_1[i]
-        loc_result[i+1] = lr_2[i]
+    #for i in range(len(lr_1)): 
+    #    if i != 0:
+    #        loc_result[i+i] = lr_1[i]
+    #        loc_result[i+i+1] = lr_2[i]
+    #    loc_result[i] = lr_1[i]
+    #    loc_result[i+1] = lr_2[i]
 
         if print_progress:
 
