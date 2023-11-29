@@ -21,13 +21,52 @@ from scipy.sparse.linalg import lobpcg
 import threading
 import ipdb
 
-# Placeholder init function for multiprocessing
-def init(counter, n_items):
-    # This function should initialize any necessary shared state for the worker processes.
-    pass
-
 def compute_vb_metrics(internal_loop_func, surf_vertices, surf_faces, n_cpus, data, norm, residual_tolerance, max_num_iter, output_name=None, nib_surf=None, k=None, cluster_index=None, cort_index=None, affine=None, debug=False):
-    # Function mapping
+    """
+    It is responsible for executing the functions in the correct order to achieve the final result.
+
+    Parameters
+    ----------
+    internal_loop_func : string
+        The function that is going to run depending on the analysis to be done.
+    surf_vertices : numpy array (M, 3)
+        Vertices of the mesh.
+    surf_faces : numpy array (M, 3)
+        Faces of the mesh. Used to find the neighborhood of a given vertex.
+    n_cpus : integer
+        How many CPU cores are available.
+    data : numpy array (M, N)
+        Data to use to calculate the VB index. M must match the number of vertices in the mesh.
+    norm : string
+        Method of reordering. Possibilities are 'geig', 'unnorm', 'rw' and 'sym'.
+    residual_tolerance : string
+        ?????????????????
+    max_num_iter : integer
+        Number of iterations for eigenpair calculation.
+    output_name : string, optional
+        Name of the output file(s). The default is None.
+    nib_surf : nibabel object, optional
+        Nibabel object containing metadata to be replicated. The default is None.
+    k : integer, optional
+        Factor determining increase in density of input mesh. The default is None.
+    cluster_index : numpy array (M,), optional
+       Array containing the cluster which each vertex belongs to. The default is None.
+    cort_index : numpy array (M, ), optional
+        Mask for detection of middle brain structures. The default is None.
+    affine : ??????????, optional
+        ?????????????. The default is None.
+    debug : boolean, optional
+        Outputs ribbon file for debugging. The default is False.
+
+    Returns
+    -------
+    processed_results : Full brain -> Tuple (numpy array, numpy array)
+                        Searchlight -> numpy array of float32 (M, )
+                        Hybrid -> ?????????
+        It stores the results, either the eigenvalue or the eigenpair.
+
+    """
+
     func_mapping = {
         "vb_cluster": "vb_cluster_internal_loop",
         "vb_index": "vb_index_internal_loop"
@@ -53,6 +92,30 @@ def compute_vb_metrics(internal_loop_func, surf_vertices, surf_faces, n_cpus, da
     return processed_results
 
 def determine_items_and_cpus(internal_loop_func, surf_vertices, cluster_index, n_cpus):
+    """
+    Divides and parallelizes a job according to the number of CPUs available
+
+    Parameters
+    ----------
+    internal_loop_func : string
+        The function that is going to run depending on the analysis to be done.
+    surf_vertices : numpy array (M, 3)
+        Vertices of the mesh.
+    cluster_index : numpy array (M, )
+        Indicates to which cluster each vertex belongs.
+    n_cpus : integer
+        How many CPU cores are available.
+
+    Returns
+    -------
+    n_items : integer
+        How many clusters are.
+    n_cpus : integer
+        How many CPU cores are going to be used.
+    dn : integer
+        How many elements will be processed for each CPU.
+    """
+    
     if internal_loop_func == "vb_cluster_internal_loop":
         cluster_labels = np.unique(cluster_index)
         n_items = len(cluster_labels)
@@ -64,12 +127,71 @@ def determine_items_and_cpus(internal_loop_func, surf_vertices, cluster_index, n
     return n_items, n_cpus, dn
 
 def initialize_multiprocessing(n_cpus, n_items):
+    """
+    It initializes the multiprocessing threads.
+
+    Parameters
+    ----------
+    n_cpus : integer
+        How many CPU cores are going to be used.
+    n_items : integer
+        How many clusters are.
+
+    Returns
+    -------
+    pool : ????????
+        ???????.
+    counter : ???????
+        ?????????.
+
+    """
     counter = Value('i', 0)
     pool = Pool(processes=n_cpus, initializer=init, initargs=(counter, n_items))
     return pool, counter
 
 def run_multiprocessing(pool, internal_loop_func, n_items, dn, surf_vertices, surf_faces, data, norm, residual_tolerance, max_num_iter, cluster_index, cort_index, affine, k, debug):
-    
+    """
+    Initializes the specific function for each analysis and takes care of multiprocessing.
+
+    Parameters
+    ----------
+    pool : ??????????
+        ????????.
+    internal_loop_func : string
+        The function that is going to run depending on the analysis to be done.
+    n_items : integer
+        How many clusters are.
+    dn : integer
+        How many elements will be processed for each CPU.
+    surf_vertices : numpy array (M, 3)
+        Vertices of the mesh.
+    surf_faces : numpy array (M, 3)
+        Faces of the mesh. Used to find the neighborhood of a given vertex.
+    data : numpy array (M, N)
+        Data to use to calculate the VB index. M must match the number of vertices in the mesh.
+    norm : string
+        Method of reordering. Possibilities are 'geig', 'unnorm', 'rw' and 'sym'.
+    residual_tolerance : string
+        ?????????.
+    max_num_iter : integer
+        Number of iterations for eigenpair calculation.
+    cluster_index : numpy array (M, )
+        Array containing the cluster which each vertex belongs to.
+    cort_index : numpy array (M, )
+        Mask for detection of middle brain structures.
+    affine : ??????????
+        ??????????.
+    k : integer
+        Factor determining increase in density of input mesh.
+    debug : boolean
+        Outputs ribbon file for debugging.
+
+    Returns
+    -------
+    t.get(): numpy array.
+        It gets the results of all the threads.
+
+    """
     def pool_callback(result):
         # Define error handling here
         print("Error occurred in pool execution:", result)
@@ -78,23 +200,27 @@ def run_multiprocessing(pool, internal_loop_func, n_items, dn, surf_vertices, su
         pool.terminate()
     
     full_brain=True
-    threads = []
+    threads = np.array([])
     for i0 in range(0, n_items, dn):
         iN = min(i0 + dn, n_items)
         if internal_loop_func == "vb_cluster_internal_loop":
-            threads.append(pool.apply_async(vb_cluster_internal_loop, (full_brain, i0, iN, surf_faces, data, cluster_index, norm, residual_tolerance, max_num_iter), error_callback=pool_callback))
+            threads = np.append(threads, (pool.apply_async(vb_cluster_internal_loop, (full_brain, i0, iN, surf_faces, data, cluster_index, norm, residual_tolerance, max_num_iter), error_callback=pool_callback)))
         elif internal_loop_func == "vb_hybrid_internal_loop":
-            threads.append(pool.apply_async(vb_hybrid_internal_loop, (i0, iN, surf_vertices, surf_faces, affine, data, norm, residual_tolerance, max_num_iter, k, debug), error_callback=pool_callback))
+            threads = np.append(threads, (pool.apply_async(vb_hybrid_internal_loop, (i0, iN, surf_vertices, surf_faces, affine, data, norm, residual_tolerance, max_num_iter, k, debug), error_callback=pool_callback)))
         else:
-            threads.append(pool.apply_async(vb_index_internal_loop, (i0, iN, surf_faces, data, norm, residual_tolerance, max_num_iter), error_callback=pool_callback))
+            threads = np.append(threads, (pool.apply_async(vb_index_internal_loop, (i0, iN, surf_faces, data, norm, residual_tolerance, max_num_iter), error_callback=pool_callback)))
             
 
     # Wait for all threads to complete
     pool.close()
     pool.join()
 
+    res = np.empty((len(threads),), dtype=object)
 
-    return[t.get() for t in threads]
+    for r, t in enumerate(threads):
+        res[r] = t.get() 
+
+    return res
 
 
 def process_and_save_results(internal_loop_func, results, output_name, nib_surf, surf_vertices, cluster_index, cort_index, affine, debug, data, n_items):
@@ -116,20 +242,50 @@ def cleanup(pool):
     pool.terminate()
 
 def process_vb_cluster_results(results, surf_vertices, cluster_index, output_name, nib_surf, n_items):
+    """
+    It processes the results obtained from the vb_cluster_internal_loop and 
+    sneds the correct data to create the output file(s).
+
+    Parameters
+    ----------
+    results : python list.
+        The results of the vb_cluster_internal_loop.
+    surf_vertices : numpy array (M, 3)
+        Vertices of the mesh.
+    cluster_index : numpy array (M, )
+        Array containing the cluster which each vertex belongs to.
+    output_name : string.
+        Name of the output file(s). The default is None.
+    nib_surf : nibabel object.
+        Nibabel object containing metadata to be replicated.
+    n_items : integer
+        How many clusters are.
+
+    Returns
+    -------
+    results_eigenvalues : numpy array (M, )
+        Array of the same size as the eigenvectors array but only containing
+        the eigenvalue(s).
+    results_eigenvectors : numpy array (M, 1)
+        Array with the same size as the eigenvalues array, each column corresponds
+        to each value.
+
+    """
     # Process results as done in the old code for vb_cluster_internal_loop
     # Replace the following lines with your specific logic for processing
     cluster_labels = np.unique(cluster_index)
     midline_index = cluster_index == 0
-    results_v2 = np.empty((n_items,), dtype=object)
+    results_v2 = np.empty(((len(cluster_labels)-1),), dtype=object)
     #results_v2 = [[], []]
-    results_eigenvectors_l = np.empty((n_items,), dtype=object)
+    results_eigenvectors_l = np.empty(((len(cluster_labels)-1),), dtype=object)
     
     #results_eigenvectors_l = [[], []]
     # Save files if output_name is provided
-    #ipdb.set_trace()
     for r, rv in enumerate(results):
-        results_v2[r] = rv[0][0]
-        results_eigenvectors_l[r] = rv[0][1]
+        if r == 0:
+            continue
+        results_v2[r-1] = rv[r+r-2]
+        results_eigenvectors_l[r-1] = rv[r+r-1]
         
     results_eigenvalues = np.zeros(len(surf_vertices), dtype=np.float32)
     results_eigenvectors = np.array([], dtype=np.float32)
@@ -138,8 +294,8 @@ def process_vb_cluster_results(results, surf_vertices, cluster_index, output_nam
         if cluster != 0:
             results_eigenvectors_local = np.zeros(len(surf_vertices), dtype=np.float32)
             idx = np.where(cluster_index == cluster)[0]
-            results_eigenvalues[idx] = results_v2[i]
-            results_eigenvectors_local[idx] = results_eigenvectors_l[i]
+            results_eigenvalues[idx] = results_v2[i-1]
+            results_eigenvectors_local[idx] = results_eigenvectors_l[i-1]
             results_eigenvectors = np.append(results_eigenvectors_local, results_eigenvectors)
 
     results_eigenvectors = results_eigenvectors.reshape(-1, 1)
@@ -154,14 +310,33 @@ def process_vb_cluster_results(results, surf_vertices, cluster_index, output_nam
     return results_eigenvalues, results_eigenvectors
 
 def process_vb_index_results(results, cort_index, output_name, nib_surf):
+    """
+    
+
+    Parameters
+    ----------
+    results : python list.
+        The results of the vb_cluster_internal_loop.
+    cort_index : numpy array (M, )
+        Mask for detection of middle brain structures.
+    output_name : string.
+        Name of the output file(s).
+    nib_surf : nibabel object.
+        Nibabel object containing metadata to be replicated.
+
+    Returns
+    -------
+    results_v2 : numpy array (M, )
+        Array of the computed eigenvalues.
+
+    """
     # Process results as done in the old code for vb_index_internal_loop
     # Replace the following lines with your specific logic for processing
-    results_v2 = np.array([])
+    results_v2 = np.array([], dtype=np.float32)
     for r in results:
         results_v2 = np.append(results_v2, r)
     #results = np.array(results)
     results_v2[np.logical_not(cort_index)] = np.nan
-    results_v2 = np.array(results_v2, dtype=np.float32)
     # The problem is that r is float64, when appending, results_v2 becomes
     #float64 aswell.
     # Save files if output_name is provided
@@ -170,6 +345,30 @@ def process_vb_index_results(results, cort_index, output_name, nib_surf):
     return results_v2
 
 def process_vb_hybrid_results(results, cort_index, output_name, nib_surf, debug, data):
+    """
+    
+
+    Parameters
+    ----------
+    results : TYPE
+        DESCRIPTION.
+    cort_index : TYPE
+        DESCRIPTION.
+    output_name : TYPE
+        DESCRIPTION.
+    nib_surf : TYPE
+        DESCRIPTION.
+    debug : TYPE
+        DESCRIPTION.
+    data : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    processed_results : TYPE
+        DESCRIPTION.
+
+    """
     # Process results as done in the old code for vb_hybrid_internal_loop
     # Replace the following lines with your specific logic for processing
     processed_results = np.array([])
@@ -288,7 +487,7 @@ def vb_index_internal_loop(i0, iN, surf_faces, data, norm, residual_tolerance, m
 
     # Calculate how many vertices we will compute
     diff = iN - i0 # Estos determinan el rango de vertices que seran analizados
-    loc_result = np.zeros(diff) # Se hace una matriz de 0 teniendo en cuenta el rango de los vertices
+    loc_result = np.zeros(diff, dtype=np.float32) # Se hace una matriz de 0 teniendo en cuenta el rango de los vertices
 
     for idx in range(diff):
         # Calculate the real index
@@ -355,10 +554,7 @@ def vb_cluster_internal_loop(full_brain, idx_cluster_0, idx_cluster_N, surf_face
                    Resulting VB index and Fiedler vector for each of the clusters in range
     """
     diff = idx_cluster_N - idx_cluster_0
-    loc_result = []
-    #loc_result = np.empty(((diff+1)*2,), dtype=object)
-    #lr_1 = np.empty(((diff+1),), dtype=object)
-    #lr_2 = np.empty(((diff+1),), dtype=object)
+    loc_result = np.empty(((diff+1),), dtype=object)
     cluster_labels = np.unique(cluster_index)
 
     for idx in range(diff):
@@ -366,9 +562,9 @@ def vb_cluster_internal_loop(full_brain, idx_cluster_0, idx_cluster_N, surf_face
         i = idx + idx_cluster_0
 
         if(cluster_labels[i] == 0):
-            loc_result.append(([], []))
-            #lr_1[0] = []
-            #lr_2[0] = []
+            #loc_result.append(([], []))
+            # This line was commented because it makes no sense to fill
+            # a result variable with empty arrays
             continue
         try:
             # Get neighborhood and its data
@@ -381,20 +577,16 @@ def vb_cluster_internal_loop(full_brain, idx_cluster_0, idx_cluster_N, surf_face
             # Store the result of this run
             # Warning: It is not true that the eigenvectors will be all the same
             # size, as the clusters might be of different sizes
-            val = eigenvalue
-            vel = eigenvector
-            loc_result.append((val, vel))
+            #val = eigenvalue
+            #vel = eigenvector
+            #loc_result.append((val, vel))
+            loc_result[0] = eigenvalue
+            loc_result[1] = eigenvector
             #lr_1[idx] = val
             #lr_2[idx] = vel
         except TimeSeriesTooShortError as error:
             raise error
 
-    #for i in range(len(lr_1)): 
-    #    if i != 0:
-    #        loc_result[i+i] = lr_1[i]
-    #        loc_result[i+i+1] = lr_2[i]
-    #    loc_result[i] = lr_1[i]
-    #    loc_result[i+1] = lr_2[i]
 
         if print_progress:
 
@@ -619,7 +811,10 @@ def get_fiedler_eigenpair(method, full_brain, Q, D=None, is_symmetric=True, tol=
     else:
         
         eigenvalues, eigenvectors = spl.eig(Q, D, check_finite=False)
-            
+    
+    eigenvalues = np.array(eigenvalues, dtype=np.float32)
+    eigenvectors = np.array(eigenvectors, dtype=np.float32)
+    
     eigenvalues = np.real(eigenvalues)
     eigenvectors = np.real(eigenvectors)
     
@@ -633,6 +828,7 @@ def get_fiedler_eigenpair(method, full_brain, Q, D=None, is_symmetric=True, tol=
         normalisation_factor = dim/(dim-1.)
 
     second_smallest_eigval = eigenvalues[1]/normalisation_factor
+    second_smallest_eigval = second_smallest_eigval.astype(np.float32)
     
     fiedler_vector = eigenvectors[:, sort_eigen[1]]
     if D is None:
