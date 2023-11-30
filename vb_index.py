@@ -51,7 +51,7 @@ def compute_vb_metrics(internal_loop_func, surf_vertices, surf_faces, n_cpus, da
         Factor determining increase in density of input mesh. The default is None.
     cluster_index : numpy array (M,), optional
        Array containing the cluster which each vertex belongs to. The default is None.
-    cort_index : numpy array (M, ), optional
+    cort_index : numpy array (M,), optional
         Mask for detection of middle brain structures. The default is None.
     affine : ??????????, optional
         ?????????????. The default is None.
@@ -61,7 +61,7 @@ def compute_vb_metrics(internal_loop_func, surf_vertices, surf_faces, n_cpus, da
     Returns
     -------
     processed_results : Full brain -> Tuple (numpy array, numpy array)
-                        Searchlight -> numpy array of float32 (M, )
+                        Searchlight -> numpy array of float32 (M,)
                         Hybrid -> ?????????
         It stores the results, either the eigenvalue or the eigenpair.
 
@@ -101,7 +101,7 @@ def determine_items_and_cpus(internal_loop_func, surf_vertices, cluster_index, n
         The function that is going to run depending on the analysis to be done.
     surf_vertices : numpy array (M, 3)
         Vertices of the mesh.
-    cluster_index : numpy array (M, )
+    cluster_index : numpy array (M,)
         Indicates to which cluster each vertex belongs.
     n_cpus : integer
         How many CPU cores are available.
@@ -175,9 +175,9 @@ def run_multiprocessing(pool, internal_loop_func, n_items, dn, surf_vertices, su
         ?????????.
     max_num_iter : integer
         Number of iterations for eigenpair calculation.
-    cluster_index : numpy array (M, )
+    cluster_index : numpy array (M,)
         Array containing the cluster which each vertex belongs to.
-    cort_index : numpy array (M, )
+    cort_index : numpy array (M,)
         Mask for detection of middle brain structures.
     affine : ??????????
         ??????????.
@@ -224,6 +224,49 @@ def run_multiprocessing(pool, internal_loop_func, n_items, dn, surf_vertices, su
 
 
 def process_and_save_results(internal_loop_func, results, output_name, nib_surf, surf_vertices, cluster_index, cort_index, affine, debug, data, n_items):
+    """
+    It contains the logic to process the results depending on the desired analysis
+
+    Parameters
+    ----------
+    internal_loop_func : string
+        The function that is going to run depending on the analysis to be done.
+    results : numpy array (M,)
+        The results of all the threads.
+    output_name : string
+        Name of the output file(s).
+    nib_surf : nibabel object
+        Nibabel object containing metadata to be replicated.
+    surf_vertices : numpy array (M, 3)
+        Vertices of the mesh.
+    cluster_index : numpy array (M,)
+        Array containing the cluster which each vertex belongs to.
+    cort_index : numpy array (M,)
+        Mask for detection of middle brain structures.
+    affine : ??????????
+        ??????????.
+    debug : boolean
+        Outputs ribbon file for debugging.
+    data : numpy array (M, N)
+        Data to use to calculate the VB index. M must match the number of vertices in the mesh.
+    n_items : integer
+        How many clusters are. 
+
+    Returns
+    -------
+    Full-brain -> results_eigenvalues : numpy array (M, )
+                      Array of the same size as the eigenvectors array but only containing
+                      the eigenvalue(s).
+                  results_eigenvectors : numpy array (M, 1)
+                      Array with the same size as the eigenvalues array, each column corresponds
+                      to each value.
+                      
+    Searchlight -> results_v2 : numpy array (M, )
+                       Array of the computed eigenvalues.
+                  
+
+    """
+    
     # Implement the processing of results and saving of files as needed.
     if internal_loop_func == "vb_cluster_internal_loop":
         # Processing for vb_cluster_internal_loop
@@ -315,7 +358,7 @@ def process_vb_index_results(results, cort_index, output_name, nib_surf):
 
     Parameters
     ----------
-    results : python list.
+    results : numpy array.
         The results of the vb_cluster_internal_loop.
     cort_index : numpy array (M, )
         Mask for detection of middle brain structures.
@@ -350,23 +393,23 @@ def process_vb_hybrid_results(results, cort_index, output_name, nib_surf, debug,
 
     Parameters
     ----------
-    results : TYPE
-        DESCRIPTION.
-    cort_index : TYPE
-        DESCRIPTION.
-    output_name : TYPE
-        DESCRIPTION.
-    nib_surf : TYPE
-        DESCRIPTION.
-    debug : TYPE
-        DESCRIPTION.
-    data : TYPE
-        DESCRIPTION.
+    results : numpy array
+        The results of the vb_hybrid_internal_loop.
+    cort_index : numpy array (M, )
+        Mask for detection of middle brain structures.
+    output_name : string
+        Name of the output file(s).
+    nib_surf : nibabel object.
+        Nibabel object containing metadata to be replicated.
+    debug : boolean
+        Outputs ribbon file for debugging.
+    data : numpy array (M, N)
+        Data to use to calculate the VB index. M must match the number of vertices in the mesh.
 
     Returns
     -------
-    processed_results : TYPE
-        DESCRIPTION.
+    processed_results : numpy array
+        ??????????
 
     """
     # Process results as done in the old code for vb_hybrid_internal_loop
@@ -601,7 +644,32 @@ def vb_cluster_internal_loop(full_brain, idx_cluster_0, idx_cluster_N, surf_face
 
 	
 def get_neighborhood(data, surf_vertices, surf_faces, i, affine, k=3, debug=False):
-    """Get neighbors in volumetric space given the coordinates of a vertex"""
+    """
+    Get neighbors in volumetric space given the coordinates of a vertex
+
+    Parameters
+    ----------
+    data : (M, N) numpy array
+        Data to use to calculate the VB index and Fiedler vector. M must match the number of vertices in the mesh
+    surf_vertices : numpy array (M, 3)
+        Vertices of the mesh.
+    surf_faces : (M, 3) numpy array
+        Faces of the mesh. Used to find the neighborhood of a given vertex.
+    i : integer
+        Index of the vertex.
+    affine : ????????
+        ?????????
+    k : integer
+        Factor determining increase in density of input mesh (default k=3)
+    debug : boolean, optional.
+        Outputs ribbon file for debugging (default = False)
+
+    Returns
+    -------
+    ????????
+        ??????????.
+
+    """
 
     # Step 1: Find indices of faces containing vertex i
     neighbor_idx = np.array(np.sum(surf_faces == i, 1), dtype=bool)
