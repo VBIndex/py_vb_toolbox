@@ -20,8 +20,9 @@ import traceback
 from scipy.sparse.linalg import lobpcg
 import threading
 import ipdb
+from scipy.stats import rankdata
 
-def compute_vb_metrics(internal_loop_func, surf_vertices, surf_faces, n_cpus, data, norm, residual_tolerance, max_num_iter, output_name=None, nib_surf=None, k=None, cluster_index=None, cort_index=None, affine=None, debug=False):
+def compute_vb_metrics(internal_loop_func, surf_vertices, surf_faces, n_cpus, data, norm, residual_tolerance, max_num_iter, output_name=None, nib_surf=None, k=None, cluster_index=None, cort_index=None, affine=None, reho=False, debug=False):
     """
     It is responsible for executing the functions in the correct order to achieve the final result.
 
@@ -80,7 +81,7 @@ def compute_vb_metrics(internal_loop_func, surf_vertices, surf_faces, n_cpus, da
     pool, counter = initialize_multiprocessing(n_cpus, n_items)
 
     # Run multiprocessing
-    results = run_multiprocessing(pool, internal_loop_func, n_items, dn, surf_vertices, surf_faces, data, norm, residual_tolerance, max_num_iter, cluster_index, cort_index, affine, k, debug)
+    results = run_multiprocessing(pool, internal_loop_func, n_items, dn, surf_vertices, surf_faces, data, norm, residual_tolerance, max_num_iter, cluster_index, cort_index, affine, k, reho, debug)
 
     # Process and save results
     processed_results = process_and_save_results(internal_loop_func, results, output_name, nib_surf, surf_vertices, cluster_index, cort_index, affine, debug, data, n_items)
@@ -149,7 +150,7 @@ def initialize_multiprocessing(n_cpus, n_items):
     pool = Pool(processes=n_cpus, initializer=init, initargs=(counter, n_items))
     return pool, counter
 
-def run_multiprocessing(pool, internal_loop_func, n_items, dn, surf_vertices, surf_faces, data, norm, residual_tolerance, max_num_iter, cluster_index, cort_index, affine, k, debug):
+def run_multiprocessing(pool, internal_loop_func, n_items, dn, surf_vertices, surf_faces, data, norm, residual_tolerance, max_num_iter, cluster_index, cort_index, affine, k, reho, debug):
     """
     Initializes the specific function for each analysis and takes care of multiprocessing.
 
@@ -206,7 +207,10 @@ def run_multiprocessing(pool, internal_loop_func, n_items, dn, surf_vertices, su
         if internal_loop_func == "vb_cluster_internal_loop":
             threads = np.append(threads, (pool.apply_async(vb_cluster_internal_loop, (full_brain, i0, iN, surf_faces, data, cluster_index, norm, residual_tolerance, max_num_iter), error_callback=pool_callback)))
         elif internal_loop_func == "vb_hybrid_internal_loop":
-            threads = np.append(threads, (pool.apply_async(vb_hybrid_internal_loop, (i0, iN, surf_vertices, surf_faces, affine, data, norm, residual_tolerance, max_num_iter, k, debug), error_callback=pool_callback)))
+            if reho == False:
+                threads = np.append(threads, (pool.apply_async(vb_hybrid_internal_loop, (i0, iN, surf_vertices, surf_faces, affine, data, norm, residual_tolerance, max_num_iter, k, debug), error_callback=pool_callback)))
+            else:
+                threads = np.append(threads, (pool.apply_async(vb_hybrid_reho_internal_loop, (i0, iN, surf_vertices, surf_faces, data, norm, debug), error_callback=pool_callback)))
         else:
             threads = np.append(threads, (pool.apply_async(vb_index_internal_loop, (i0, iN, surf_faces, data, norm, residual_tolerance, max_num_iter), error_callback=pool_callback)))
             
@@ -810,6 +814,97 @@ def vb_hybrid_internal_loop(i0, iN, surf_vertices, surf_faces, affine, data, nor
     else:
         return loc_result, loc_neigh
 	
+def vb_hybrid_reho_internal_loop(i0, iN, surf_vertices, brain_mask, data, norm, debug):
+    """Computes the Vogt-Bailey index of vertices in a given range
+
+       Parameters
+       ----------
+       i0: integer
+           Index of first vertex to be analysed
+       iN: integer
+           iN - 1 is the index of the last vertex to be analysed
+       surf_vertices: (M, 3) numpy array
+           Coordinates of vertices of the mesh in voxel space
+       brain_mask: (nRows, nCols, nSlices) numpy array
+           Whole brain mask. Used to mask volumetric data
+       data: (nRows, nCols, nSlices, N) numpy array
+           Volumetric data used to calculate the VB index. N is the number of maps
+       norm: string
+           Method of reordering. Possibilities are 'geig', 'unnorm', 'rw' and 'sym'
+       print_progress: boolean
+           Print the current progress of the system
+
+       Returns
+       -------
+       loc_result: (N) numpy array
+                   Resulting VB index of the indices in range. Will have length iN - i0
+    """
+    
+    # Calculate how many vertices we will compute
+    diff = iN - i0
+    loc_result = np.zeros(diff)
+
+    for idx in range(diff):
+        #Calculate the real index
+        i = idx + i0
+
+        # Get neighborhood and its data
+        # print(data.shape)
+        try:
+            neighborhood = get_neighborhood(data,surf_vertices[i,:],brain_mask)
+            if len(neighborhood) == 0:
+                print("Warning: no neighborhood")
+                loc_result[idx] = np.nan
+                continue
+#            affinity = m.create_affinity_matrix(neighborhood)
+            neighborhood = np.atleast_2d(neighborhood)
+            if neighborhood.shape[1] < 3:
+                print("Time series have less than 3 entries. Your analysis will be compromised!\n")
+                loc_result[idx] = np.nan
+                continue
+            no_of_voxels = np.shape(neighborhood)[0]
+            no_of_time_pts = np.shape(neighborhood)[1]
+            ranked_neigh = np.ones((no_of_voxels,no_of_time_pts))
+
+            if no_of_voxels >= no_of_time_pts:
+                print('neighborhood matrix must be transposed!')
+            for s in range(no_of_voxels):
+                ranked_neigh[s,:] = rankdata(neighborhood[s,:])
+                ranked_sums = np.sum(ranked_neigh,axis=0)
+                Rbar = np.sum(ranked_sums)/no_of_time_pts
+                R = np.sum((ranked_sums - Rbar)**2)
+                KCC = 12.*R / ((no_of_voxels**2)*(no_of_time_pts**3 - no_of_time_pts))
+            
+#            if affinity.shape[0] > 3:
+            if no_of_voxels > 3:
+                #tr_row, tr_col = np.triu_indices(affinity.shape[0], k=1)
+            
+                # Calculate the second smallest eigenvalue
+#                _, _, eigenvalue, _ = m.spectral_reorder(affinity, norm)
+                # return [0]
+                # Store the result of this run
+                loc_result[idx] = KCC
+                #loc_result[idx] = np.mean(affinity[tr_row, tr_col])
+            else:
+                print("Warning: too few neighbors ({})".format(no_of_voxels), "for vertex:",i)
+                loc_result[idx] = np.nan
+        except TimeSeriesTooShortError as error:
+            raise error
+        except Exception:
+            traceback.print_exc()
+            loc_result[idx] = np.nan
+        
+
+        if debug:
+
+            global counter
+            global n
+            with counter.get_lock():
+                counter.value += 1
+            if counter.value % 1000 == 0:
+                print("{}/{}".format(counter.value, n))
+
+    return loc_result
 
 class TimeSeriesTooShortError(Exception):
     """Raised when the time series in the input data have less than three elements"""
@@ -1111,6 +1206,9 @@ def create_parser():
 
     parser.add_argument('-hy', '--hybrid', action='store_true',
                         help="""Calculate searchlight VB index with hybrid approach.""")
+    
+    parser.add_argument('-rh', '--reho', action='store_true',
+                        help="""Calculate the KCC index for ReHo approach.""")
 
     parser.add_argument('-m', '--mask', metavar='file', type=str,
                                nargs=1, help="""File containing the labels to
@@ -1217,7 +1315,10 @@ def main():
 
     elif args.clusters is None:
         if args.hybrid:
-            print("Running searchlight analysis with hybrid approach")
+            if args.reho:
+                print("Running ReHo approach")
+            else:
+                print("Running searchlight analysis with hybrid approach")
             if args.mask is None:
                 sys.stderr.write("A mask file must be provided through the --mask flag. See --help")
                 sys.exit(2)
@@ -1231,7 +1332,7 @@ def main():
             else:
                 L_norm = args.norm[0]
             try:
-                result = compute_vb_metrics("vb_hybrid", surf_vertices=vertices, surf_faces=faces, affine=affine, n_cpus=n_cpus, data=data, norm=L_norm, cort_index=cort_index, residual_tolerance=args.tol[0], max_num_iter=args.maxiter[0], output_name="hybrid_approche_output", nib_surf=nib_surf, k=3, debug=args.debug)
+                result = compute_vb_metrics("vb_hybrid", surf_vertices=vertices, surf_faces=faces, affine=affine, n_cpus=n_cpus, data=data, norm=L_norm, cort_index=cort_index, residual_tolerance=args.tol[0], max_num_iter=args.maxiter[0], output_name="hybrid_approche_output", nib_surf=nib_surf, k=3, reho=args.reho[0], debug=args.debug)
             except Exception as error:
                 sys.stderr.write(str(error))
                 sys.exit(2)
