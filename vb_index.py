@@ -41,7 +41,7 @@ def compute_vb_metrics(internal_loop_func, surf_vertices, surf_faces, n_cpus, da
     norm : string
         Method of reordering. Possibilities are 'geig', 'unnorm', 'rw' and 'sym'.
     residual_tolerance : string
-        ?????????????????
+        ????????????????? Can it be an integer or float?
     max_num_iter : integer
         Number of iterations for eigenpair calculation.
     output_name : string, optional
@@ -140,10 +140,10 @@ def initialize_multiprocessing(n_cpus, n_items):
 
     Returns
     -------
-    pool : ????????
-        ???????.
-    counter : ???????
-        ?????????.
+    pool : Pool object.
+        Object where pool information is stored.
+    counter : Synchronized object.
+        To synchronize pool processes.
 
     """
     counter = Value('i', 0)
@@ -156,8 +156,8 @@ def run_multiprocessing(pool, internal_loop_func, n_items, dn, surf_vertices, su
 
     Parameters
     ----------
-    pool : ??????????
-        ????????.
+    pool : Pool object.
+        Object where pool information is stored.
     internal_loop_func : string
         The function that is going to run depending on the analysis to be done.
     n_items : integer
@@ -194,6 +194,19 @@ def run_multiprocessing(pool, internal_loop_func, n_items, dn, surf_vertices, su
 
     """
     def pool_callback(result):
+        """
+        This function is used to handle pool errors
+
+        Parameters
+        ----------
+        result : ????????
+            ????????.
+
+        Returns
+        -------
+        None.
+
+        """
         # Define error handling here
         print("Error occurred in pool execution:", result)
         # Terminate the pool in case of error
@@ -267,6 +280,8 @@ def process_and_save_results(internal_loop_func, results, output_name, nib_surf,
                       
     Searchlight -> results_v2 : numpy array (M, )
                        Array of the computed eigenvalues.
+                       
+    Hybrid -> ??????????????
                   
 
     """
@@ -286,6 +301,19 @@ def process_and_save_results(internal_loop_func, results, output_name, nib_surf,
         return process_vb_hybrid_results(results, cort_index, output_name, nib_surf, debug, data)
 
 def cleanup(pool):
+    """
+    This function is used to terminate de pool once it is no longer needed.
+
+    Parameters
+    ----------
+    pool : Pool object.
+        Object where pool information is stored.
+
+    Returns
+    -------
+    None.
+
+    """
     pool.terminate()
 
 def process_vb_cluster_results(results, surf_vertices, cluster_index, output_name, nib_surf, n_items):
@@ -412,7 +440,7 @@ def process_vb_hybrid_results(results, cort_index, output_name, nib_surf, debug,
 
     Returns
     -------
-    processed_results : numpy array
+    processed_results : numpy array ??????
         ??????????
 
     """
@@ -1251,6 +1279,14 @@ def create_parser():
 
 
 def main():
+    """
+    Main function where argument parser and main logic is handled.
+
+    Returns
+    -------
+    None.
+
+    """
 
     parser = create_parser()
     args = parser.parse_args()
