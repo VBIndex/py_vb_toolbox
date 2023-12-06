@@ -40,8 +40,8 @@ def compute_vb_metrics(internal_loop_func, surf_vertices, surf_faces, n_cpus, da
         Data to use to calculate the VB index. M must match the number of vertices in the mesh.
     norm : string
         Method of reordering. Possibilities are 'geig', 'unnorm', 'rw' and 'sym'.
-    residual_tolerance : string
-        ????????????????? Can it be an integer or float?
+    residual_tolerance : float
+        The target tolerance for the calculation of eigenpairs.
     max_num_iter : integer
         Number of iterations for eigenpair calculation.
     output_name : string, optional
@@ -54,17 +54,18 @@ def compute_vb_metrics(internal_loop_func, surf_vertices, surf_faces, n_cpus, da
        Array containing the cluster which each vertex belongs to. The default is None.
     cort_index : numpy array (M,), optional
         Mask for detection of middle brain structures. The default is None.
-    affine : ??????????, optional
-        ?????????????. The default is None.
+    affine : numpy array (M, M), optional
+        Matrix used to compute spatial translations and rotations. The default is None.
     debug : boolean, optional
         Outputs ribbon file for debugging. The default is False.
 
     Returns
     -------
-    processed_results : Full brain -> Tuple (numpy array, numpy array)
+    processed_results : Full brain -> tuple (numpy array, numpy array)
                         Searchlight -> numpy array of float32 (M,)
-                        Hybrid -> ?????????
-        It stores the results, either the eigenvalue or the eigenpair.
+                        Hybrid & ReHo -> numpy object array (M,)
+        It stores the results, either the eigenvalue(s), the eigenvector(s) or 
+        the number of neighbours of each voxel.
 
     """
 
@@ -172,16 +173,16 @@ def run_multiprocessing(pool, internal_loop_func, n_items, dn, surf_vertices, su
         Data to use to calculate the VB index. M must match the number of vertices in the mesh.
     norm : string
         Method of reordering. Possibilities are 'geig', 'unnorm', 'rw' and 'sym'.
-    residual_tolerance : string
-        ?????????.
+    residual_tolerance : float
+        The target tolerance for the calculation of eigenpairs.
     max_num_iter : integer
         Number of iterations for eigenpair calculation.
     cluster_index : numpy array (M,)
         Array containing the cluster which each vertex belongs to.
     cort_index : numpy array (M,)
         Mask for detection of middle brain structures.
-    affine : ??????????
-        ??????????.
+    affine : numpy array (M, M), optional
+        Matrix used to compute spatial translations and rotations.
     k : integer
         Factor determining increase in density of input mesh.
     debug : boolean
@@ -199,8 +200,8 @@ def run_multiprocessing(pool, internal_loop_func, n_items, dn, surf_vertices, su
 
         Parameters
         ----------
-        result : ????????
-            ????????.
+        result : pool object
+            Error that occurred during the process.
 
         Returns
         -------
@@ -220,10 +221,7 @@ def run_multiprocessing(pool, internal_loop_func, n_items, dn, surf_vertices, su
         if internal_loop_func == "vb_cluster_internal_loop":
             threads = np.append(threads, (pool.apply_async(vb_cluster_internal_loop, (full_brain, i0, iN, surf_faces, data, cluster_index, norm, residual_tolerance, max_num_iter), error_callback=pool_callback)))
         elif internal_loop_func == "vb_hybrid_internal_loop":
-            if reho == False:
-                threads = np.append(threads, (pool.apply_async(vb_hybrid_internal_loop, (i0, iN, surf_vertices, surf_faces, affine, data, norm, residual_tolerance, max_num_iter, k, debug), error_callback=pool_callback)))
-            else:
-                threads = np.append(threads, (pool.apply_async(vb_hybrid_reho_internal_loop, (i0, iN, surf_vertices, surf_faces, data, norm, debug), error_callback=pool_callback)))
+            threads = np.append(threads, (pool.apply_async(vb_hybrid_internal_loop, (reho, i0, iN, surf_vertices, surf_faces, affine, data, norm, residual_tolerance, max_num_iter, k, debug), error_callback=pool_callback)))         
         else:
             threads = np.append(threads, (pool.apply_async(vb_index_internal_loop, (i0, iN, surf_faces, data, norm, residual_tolerance, max_num_iter), error_callback=pool_callback)))
             
@@ -260,8 +258,8 @@ def process_and_save_results(internal_loop_func, results, output_name, nib_surf,
         Array containing the cluster which each vertex belongs to.
     cort_index : numpy array (M,)
         Mask for detection of middle brain structures.
-    affine : ??????????
-        ??????????.
+    affine : numpy array (M, M), optional
+        Matrix used to compute spatial translations and rotations.
     debug : boolean
         Outputs ribbon file for debugging.
     data : numpy array (M, N)
@@ -281,7 +279,10 @@ def process_and_save_results(internal_loop_func, results, output_name, nib_surf,
     Searchlight -> results_v2 : numpy array (M, )
                        Array of the computed eigenvalues.
                        
-    Hybrid -> ??????????????
+    Hybrid -> results_v2 : numpy array of float32 (M,)
+                  It contains the computed eigenvalues.
+              n_neigh : numpy array of float32 (M,)
+                  It contains the amount of neighbours of each voxel.
                   
 
     """
@@ -298,8 +299,8 @@ def process_and_save_results(internal_loop_func, results, output_name, nib_surf,
     else:
         # Processing for vb_hybrid_internal_loop
         # This should handle the results specifically for vb_hybrid_internal_loop
-        return process_vb_hybrid_results(results, cort_index, output_name, nib_surf, debug, data)
-
+        return process_vb_hybrid_results(results, cort_index, output_name, nib_surf, affine, debug, data)
+        
 def cleanup(pool):
     """
     This function is used to terminate de pool once it is no longer needed.
@@ -419,7 +420,7 @@ def process_vb_index_results(results, cort_index, output_name, nib_surf):
         save_gifti(nib_surf, results_v2, output_name + ".vbi.shape.gii")
     return results_v2
 
-def process_vb_hybrid_results(results, cort_index, output_name, nib_surf, debug, data):
+def process_vb_hybrid_results(results, cort_index, output_name, nib_surf, affine, debug, data):
     """
     
 
@@ -440,19 +441,40 @@ def process_vb_hybrid_results(results, cort_index, output_name, nib_surf, debug,
 
     Returns
     -------
-    processed_results : numpy array ??????
-        ??????????
+    results_v2 : numpy array of float32 (M,)
+        It contains the computed eigenvalues.
+    n_neigh : numpy array of float32 (M,)
+        It contains the amount of neighbours of each voxel.
 
     """
     # Process results as done in the old code for vb_hybrid_internal_loop
     # Replace the following lines with your specific logic for processing
-    processed_results = np.array([])
-    n_neigh = np.array([])
-    # Save files if output_name is provided
+    results_v2 = np.array([], dtype=np.float32)
+    n_neigh = np.array([], dtype=np.float32)
+    if debug:
+        coords = np.empty((0,3))
+    for i, res in enumerate(results):
+        for r in res[0]:
+            results_v2 = np.append(results_v2, r)
+        for r in res[1]:
+            n_neigh = np.append(n_neigh, r)
+        if debug:
+            coords = np.vstack([coords,res[2]])
+    results_v2[np.logical_not(cort_index)] = np.nan
+    n_neigh[np.logical_not(cort_index)] = np.nan
+    if debug: coords = coords.astype(int)
+
+    
+    # Save file
     if output_name is not None:
-        save_gifti(nib_surf, processed_results, output_name + ".vbi-hybrid.shape.gii")
+        save_gifti(nib_surf, results_v2, output_name + ".vbi-hybrid.shape.gii")
         save_gifti(nib_surf, n_neigh, output_name + ".neighbors.shape.gii")
-    return processed_results
+        if debug:
+            ribbon = np.zeros([data.shape[0],data.shape[1],data.shape[2]])
+            ribbon[coords[:,0], coords[:,1], coords[:,2]] = 1
+            nibabel.save(nibabel.Nifti1Image(ribbon, affine),output_name+'.ribbon.nii.gz')
+            
+    return results_v2, n_neigh
 
 def open_gifti_surf(filename):
     """
@@ -527,16 +549,27 @@ import multiprocessing
 from itertools import product
 
 def init(a_counter, a_n):
-    """Store total number of vertices and counter of vertices computed"""
+    """
+    Store total number of vertices and counter of vertices computed
+
+    Parameters
+    ----------
+    a_counter : TYPE
+        DESCRIPTION.
+    a_n : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    None.
+
+    """
     global counter
     global n
     counter = a_counter
     n = a_n
 
 def vb_index_internal_loop(i0, iN, surf_faces, data, norm, residual_tolerance, max_num_iter, debug=False, print_progress=False):
-    """
-    Objetivo: calcular el indice vogt bailey en una malla
-    """
     """Computes the Vogt-Bailey index of vertices in a given range
 
        Parameters
@@ -674,7 +707,14 @@ def vb_cluster_internal_loop(full_brain, idx_cluster_0, idx_cluster_N, surf_face
 
     return loc_result
 
-	
+#def claude_choose_whatever_name_you_want(reho, neighborhood, full_brain residual_tolerance, max_num_iter, norm):
+    
+#    if reho:
+        
+#    else:
+#        affinity = create_affinity_matrix(neighborhood)
+#        _, _, eigenvalue, eigenvector = spectral_reorder(full_brain, affinity, residual_tolerance, max_num_iter, norm)
+
 def get_neighborhood(data, surf_vertices, surf_faces, i, affine, k=3, debug=False):
     """
     Get neighbors in volumetric space given the coordinates of a vertex
@@ -689,8 +729,8 @@ def get_neighborhood(data, surf_vertices, surf_faces, i, affine, k=3, debug=Fals
         Faces of the mesh. Used to find the neighborhood of a given vertex.
     i : integer
         Index of the vertex.
-    affine : ????????
-        ?????????
+    affine : numpy array (M, M), optional
+        Matrix used to compute spatial translations and rotations.
     k : integer
         Factor determining increase in density of input mesh (default k=3)
     debug : boolean, optional.
@@ -698,8 +738,8 @@ def get_neighborhood(data, surf_vertices, surf_faces, i, affine, k=3, debug=Fals
 
     Returns
     -------
-    ????????
-        ??????????.
+    data : numpy array float32 (M, N, X, Y)
+        It stores the neighbours of each voxel.
 
     """
 
@@ -755,11 +795,13 @@ def get_neighborhood(data, surf_vertices, surf_faces, i, affine, k=3, debug=Fals
         return data[neigh_coords[:, 0], neigh_coords[:, 1], neigh_coords[:, 2], :]
 
 
-def vb_hybrid_internal_loop(i0, iN, surf_vertices, surf_faces, affine, data, norm, residual_tolerance, max_num_iter, k=3, debug=False, print_progress=False):
+def vb_hybrid_internal_loop(reho, i0, iN, surf_vertices, surf_faces, affine, data, norm, residual_tolerance, max_num_iter, k=3, debug=False, print_progress=False):
     """Computes the Vogt-Bailey index of vertices in a given range
 
        Parameters
        ----------
+       reho: boolean
+           Used to compute the ReHo approach.
        i0: integer
            Index of first vertex to be analysed
        iN: integer
@@ -787,8 +829,8 @@ def vb_hybrid_internal_loop(i0, iN, surf_vertices, surf_faces, affine, data, nor
     
     # Calculate how many vertices we will compute
     diff = iN - i0
-    loc_result = np.zeros(diff)
-    loc_neigh = np.zeros(diff)
+    loc_result = np.zeros(diff, dtype=np.float32)
+    loc_neigh = np.zeros(diff, dtype=np.float32)
     if debug: all_coords = np.empty((0,3))
 
 
@@ -808,19 +850,11 @@ def vb_hybrid_internal_loop(i0, iN, surf_vertices, surf_faces, affine, data, nor
             neighborhood = np.atleast_2d(neighborhood)
             loc_neigh[idx] = len(neighborhood)
 
-            if len(neighborhood) == 0:
-                print("Warning: no neighborhood for vertex:",i)
-                loc_result[idx] = np.nan
-                continue
-            affinity = create_affinity_matrix(neighborhood)
-            
-            if affinity.shape[0] > 3:
-                # Calculate the second smallest eigenvalue
-                _, _, eigenvalue, _ = spectral_reorder(False, affinity, residual_tolerance, max_num_iter, norm)
-                loc_result[idx] = eigenvalue
+            if reho:
+                loc_result =  david_bisbal_ave_maria(loc_result, diff, idx, i, reho, neighborhood, residual_tolerance, max_num_iter, norm)
             else:
-                print("Warning: too few neighbors ({})".format(affinity.shape[0]), "for vertex:",i)
-                loc_result[idx] = np.nan
+                loc_result =  quevedo_quedate(loc_result, diff, idx, i, reho, neighborhood, residual_tolerance, max_num_iter, norm)
+
         except TimeSeriesTooShortError as error:
             raise error
         except Exception:
@@ -842,96 +876,107 @@ def vb_hybrid_internal_loop(i0, iN, surf_vertices, surf_faces, affine, data, nor
     else:
         return loc_result, loc_neigh
 	
-def vb_hybrid_reho_internal_loop(i0, iN, surf_vertices, brain_mask, data, norm, debug):
-    """Computes the Vogt-Bailey index of vertices in a given range
 
-       Parameters
-       ----------
-       i0: integer
-           Index of first vertex to be analysed
-       iN: integer
-           iN - 1 is the index of the last vertex to be analysed
-       surf_vertices: (M, 3) numpy array
-           Coordinates of vertices of the mesh in voxel space
-       brain_mask: (nRows, nCols, nSlices) numpy array
-           Whole brain mask. Used to mask volumetric data
-       data: (nRows, nCols, nSlices, N) numpy array
-           Volumetric data used to calculate the VB index. N is the number of maps
-       norm: string
-           Method of reordering. Possibilities are 'geig', 'unnorm', 'rw' and 'sym'
-       print_progress: boolean
-           Print the current progress of the system
+def david_bisbal_ave_maria(loc_result, diff, idx, i, reho, neighborhood, residual_tolerance, max_num_iter, norm):
+    """
+    Computes the Kendall's coefficient concordance (KCC) for the ReHo approach.
 
-       Returns
-       -------
-       loc_result: (N) numpy array
-                   Resulting VB index of the indices in range. Will have length iN - i0
+    Parameters
+    ----------
+    loc_result : numpy array
+        It stores the KCC values.
+    diff : integer
+        The amount of vertices that will be compute.
+    idx : integer
+        Number of iteration in the main for loop from vb_hybrid_internal_loop function.
+    i : integer
+        Real index.
+    reho : boolean
+        Used to compute the ReHo approach.
+    neighborhood : numpy array of float32 (M, N)
+        ??????????.
+    residual_tolerance : float
+        The target tolerance for the calculation of eigenpairs.
+    max_num_iter : integer
+        Number of iterations for eigenpair calculation.
+    norm : string
+        Method of reordering. Possibilities are 'geig', 'unnorm', 'rw' and 'sym'.
+
+    Returns
+    -------
+    loc_result : numpy array
+        It stores the KCC values.
+
+    """
+    no_of_voxels = np.shape(neighborhood)[0]
+    no_of_time_pts = np.shape(neighborhood)[1]
+    ranked_neigh = np.ones((no_of_voxels,no_of_time_pts))
+
+    if no_of_voxels >= no_of_time_pts:
+        print('neighborhood matrix must be transposed!')
+    for s in range(no_of_voxels):
+        ranked_neigh[s,:] = rankdata(neighborhood[s,:])
+        ranked_sums = np.sum(ranked_neigh,axis=0)
+        Rbar = np.sum(ranked_sums)/no_of_time_pts
+        R = np.sum((ranked_sums - Rbar)**2)
+        KCC = 12.*R / ((no_of_voxels**2)*(no_of_time_pts**3 - no_of_time_pts))
+    
+    if no_of_voxels > 3:
+        loc_result[idx] = KCC
+    else:
+        print("Warning: too few neighbors ({})".format(no_of_voxels), "for vertex:",i)
+        loc_result[idx] = np.nan
+        
+    return loc_result
+
+def quevedo_quedate(loc_result, diff, idx, i, reho, neighborhood, residual_tolerance, max_num_iter, norm):
+    """
+    Computes the eigenvalue for every voxel.
+
+    Parameters
+    ----------
+    loc_result : numpy array
+        It stores the KCC values.
+    diff : integer
+        The amount of vertices that will be compute.
+    idx : integer
+        Number of iteration in the main for loop from vb_hybrid_internal_loop function.
+    i : integer
+        Real index.
+    reho : boolean
+        Used to compute the ReHo approach.
+    neighborhood : numpy array of float32 (M, N)
+        ??????????.
+    residual_tolerance : float
+        The target tolerance for the calculation of eigenpairs.
+    max_num_iter : integer
+        Number of iterations for eigenpair calculation.
+    norm : string
+        Method of reordering. Possibilities are 'geig', 'unnorm', 'rw' and 'sym'.
+
+    Returns
+    -------
+    loc_result : numpy array
+        It stores the KCC values.
+
     """
     
-    # Calculate how many vertices we will compute
-    diff = iN - i0
-    loc_result = np.zeros(diff)
-
-    for idx in range(diff):
-        #Calculate the real index
-        i = idx + i0
-
-        # Get neighborhood and its data
-        # print(data.shape)
-        try:
-            neighborhood = get_neighborhood(data,surf_vertices[i,:],brain_mask)
-            if len(neighborhood) == 0:
-                print("Warning: no neighborhood")
-                loc_result[idx] = np.nan
-                continue
-#            affinity = m.create_affinity_matrix(neighborhood)
-            neighborhood = np.atleast_2d(neighborhood)
-            if neighborhood.shape[1] < 3:
-                print("Time series have less than 3 entries. Your analysis will be compromised!\n")
-                loc_result[idx] = np.nan
-                continue
-            no_of_voxels = np.shape(neighborhood)[0]
-            no_of_time_pts = np.shape(neighborhood)[1]
-            ranked_neigh = np.ones((no_of_voxels,no_of_time_pts))
-
-            if no_of_voxels >= no_of_time_pts:
-                print('neighborhood matrix must be transposed!')
-            for s in range(no_of_voxels):
-                ranked_neigh[s,:] = rankdata(neighborhood[s,:])
-                ranked_sums = np.sum(ranked_neigh,axis=0)
-                Rbar = np.sum(ranked_sums)/no_of_time_pts
-                R = np.sum((ranked_sums - Rbar)**2)
-                KCC = 12.*R / ((no_of_voxels**2)*(no_of_time_pts**3 - no_of_time_pts))
-            
-#            if affinity.shape[0] > 3:
-            if no_of_voxels > 3:
-                #tr_row, tr_col = np.triu_indices(affinity.shape[0], k=1)
-            
-                # Calculate the second smallest eigenvalue
-#                _, _, eigenvalue, _ = m.spectral_reorder(affinity, norm)
-                # return [0]
-                # Store the result of this run
-                loc_result[idx] = KCC
-                #loc_result[idx] = np.mean(affinity[tr_row, tr_col])
-            else:
-                print("Warning: too few neighbors ({})".format(no_of_voxels), "for vertex:",i)
-                loc_result[idx] = np.nan
-        except TimeSeriesTooShortError as error:
-            raise error
-        except Exception:
-            traceback.print_exc()
+    if len(neighborhood) == 0:
+        print("Warning: no neighborhood for vertex:",i)
+        loc_result[idx] = np.nan
+        
+    else:
+    
+        affinity = create_affinity_matrix(neighborhood)
+    
+        if affinity.shape[0] > 3:
+            # Calculate the second smallest eigenvalue
+            _, _, eigenvalue, _ = spectral_reorder(False, affinity, residual_tolerance, max_num_iter, norm)
+            loc_result[idx] = eigenvalue
+        else:
+            print("Warning: too few neighbors ({})".format(affinity.shape[0]), "for vertex:",i)
             loc_result[idx] = np.nan
         
-
-        if debug:
-
-            global counter
-            global n
-            with counter.get_lock():
-                counter.value += 1
-            if counter.value % 1000 == 0:
-                print("{}/{}".format(counter.value, n))
-
     return loc_result
 
 class TimeSeriesTooShortError(Exception):
@@ -1368,7 +1413,7 @@ def main():
             else:
                 L_norm = args.norm[0]
             try:
-                result = compute_vb_metrics("vb_hybrid", surf_vertices=vertices, surf_faces=faces, affine=affine, n_cpus=n_cpus, data=data, norm=L_norm, cort_index=cort_index, residual_tolerance=args.tol[0], max_num_iter=args.maxiter[0], output_name="hybrid_approche_output", nib_surf=nib_surf, k=3, reho=args.reho[0], debug=args.debug)
+                result = compute_vb_metrics("vb_hybrid", surf_vertices=vertices, surf_faces=faces, affine=affine, n_cpus=n_cpus, data=data, norm=L_norm, cort_index=cort_index, residual_tolerance=args.tol[0], max_num_iter=args.maxiter[0], output_name=args.output[0], nib_surf=nib_surf, k=3, reho=args.reho, debug=args.debug)
             except Exception as error:
                 sys.stderr.write(str(error))
                 sys.exit(2)
