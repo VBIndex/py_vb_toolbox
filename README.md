@@ -1,6 +1,12 @@
 # py_vb_toolbox_update
 Vogt-Bailey index toolbox in Python
 
+# Data collection:
+You can find a collection of the required files to run the vb_index.py in the following Google Drive link:
+```bash
+https://drive.google.com/drive/folders/18auvkm7pFqf87dIUnHxSk_cB_HWPUYr_
+```
+
 # Commands:
 
 ## Full brain analysis:
