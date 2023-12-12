@@ -22,7 +22,7 @@ import threading
 import ipdb
 from scipy.stats import rankdata
 
-def compute_vb_metrics(internal_loop_func, surf_vertices, surf_faces, n_cpus, data, norm, residual_tolerance, max_num_iter, output_name=None, nib_surf=None, k=None, cluster_index=None, cort_index=None, affine=None, reho=False, debug=False):
+def compute_vb_metrics(internal_loop_func, n_cpus, data, norm, residual_tolerance, max_num_iter, header=None, brain_mask=None, surf_vertices=None, surf_faces=None, output_name=None, nib_surf=None, k=None, cluster_index=None, cort_index=None, affine=None, reho=False, full_brain=False, debug=False):
     """
     It is responsible for executing the functions in the correct order to achieve the final result.
 
@@ -30,20 +30,27 @@ def compute_vb_metrics(internal_loop_func, surf_vertices, surf_faces, n_cpus, da
     ----------
     internal_loop_func : string
         The function that is going to run depending on the analysis to be done.
-    surf_vertices : numpy array (M, 3)
-        Vertices of the mesh.
-    surf_faces : numpy array (M, 3)
-        Faces of the mesh. Used to find the neighborhood of a given vertex.
     n_cpus : integer
         How many CPU cores are available.
-    data : numpy array (M, N)
+    data : Surface -> numpy array (M, N)
         Data to use to calculate the VB index. M must match the number of vertices in the mesh.
+           Volumetric -> (nRows, nCols, nSlices, N) numpy array
+        Volumetric data used to calculate the VB index. N is the number of maps.
     norm : string
         Method of reordering. Possibilities are 'geig', 'unnorm', 'rw' and 'sym'.
     residual_tolerance : float
         The target tolerance for the calculation of eigenpairs.
     max_num_iter : integer
         Number of iterations for eigenpair calculation.
+    header : Nifty header.
+        This header contains crucial information about the structure and metadata 
+        associated with the image data stored in the file.
+    brain_mask : ???????
+        ???????.
+    surf_vertices : numpy array (M, 3)
+        Vertices of the mesh.
+    surf_faces : numpy array (M, 3)
+        Faces of the mesh. Used to find the neighborhood of a given vertex.
     output_name : string, optional
         Name of the output file(s). The default is None.
     nib_surf : nibabel object, optional
@@ -56,6 +63,10 @@ def compute_vb_metrics(internal_loop_func, surf_vertices, surf_faces, n_cpus, da
         Mask for detection of middle brain structures. The default is None.
     affine : numpy array (M, M), optional
         Matrix used to compute spatial translations and rotations. The default is None.
+    reho : Bool. The default is False
+        Indicates that ReHo approach will be computed
+    full_brain : Bool. The default is False
+        Indicates that Full Brain analysis will be computed.
     debug : boolean, optional
         Outputs ribbon file for debugging. The default is False.
 
@@ -71,21 +82,22 @@ def compute_vb_metrics(internal_loop_func, surf_vertices, surf_faces, n_cpus, da
 
     func_mapping = {
         "vb_cluster": "vb_cluster_internal_loop",
-        "vb_index": "vb_index_internal_loop"
+        "vb_index": "vb_index_internal_loop",
+        "vb_vol": "vb_vol_internal_loop"
     }
     internal_loop_func = func_mapping.get(internal_loop_func, "vb_hybrid_internal_loop")
 
     # Determine n_items and n_cpus
-    n_items, n_cpus, dn = determine_items_and_cpus(internal_loop_func, surf_vertices, cluster_index, n_cpus)
+    n_items, n_cpus, dn = determine_items_and_cpus(internal_loop_func, surf_vertices, cluster_index, n_cpus, data)
 
     # Initialize multiprocessing
     pool, counter = initialize_multiprocessing(n_cpus, n_items)
 
     # Run multiprocessing
-    results = run_multiprocessing(pool, internal_loop_func, n_items, dn, surf_vertices, surf_faces, data, norm, residual_tolerance, max_num_iter, cluster_index, cort_index, affine, k, reho, debug)
+    results = run_multiprocessing(pool, internal_loop_func, n_items, dn, surf_vertices, surf_faces, data, norm, residual_tolerance, max_num_iter, cluster_index, cort_index, affine, k, reho, full_brain, brain_mask, debug)
 
     # Process and save results
-    processed_results = process_and_save_results(internal_loop_func, results, output_name, nib_surf, surf_vertices, cluster_index, cort_index, affine, debug, data, n_items)
+    processed_results = process_and_save_results(internal_loop_func, results, output_name, nib_surf, surf_vertices, cluster_index, cort_index, affine, debug, data, n_items, header)
 
     # Clean up
     cleanup(pool)
@@ -93,7 +105,7 @@ def compute_vb_metrics(internal_loop_func, surf_vertices, surf_faces, n_cpus, da
     # Return results
     return processed_results
 
-def determine_items_and_cpus(internal_loop_func, surf_vertices, cluster_index, n_cpus):
+def determine_items_and_cpus(internal_loop_func, surf_vertices, cluster_index, n_cpus, data):
     """
     Divides and parallelizes a job according to the number of CPUs available
 
@@ -107,6 +119,10 @@ def determine_items_and_cpus(internal_loop_func, surf_vertices, cluster_index, n
         Indicates to which cluster each vertex belongs.
     n_cpus : integer
         How many CPU cores are available.
+    data : Surface -> numpy array (M, N)
+               Data to use to calculate the VB index. M must match the number of vertices in the mesh.
+           Volumetric -> (nRows, nCols, nSlices, N) numpy array
+               Volumetric data used to calculate the VB index. N is the number of maps.
 
     Returns
     -------
@@ -121,6 +137,8 @@ def determine_items_and_cpus(internal_loop_func, surf_vertices, cluster_index, n
     if internal_loop_func == "vb_cluster_internal_loop":
         cluster_labels = np.unique(cluster_index)
         n_items = len(cluster_labels)
+    elif internal_loop_func == "vb_vol_internal_loop":
+        n_items = data.shape[0]*data.shape[1]*data.shape[2]
     else:
         n_items = len(surf_vertices)
     
@@ -151,7 +169,7 @@ def initialize_multiprocessing(n_cpus, n_items):
     pool = Pool(processes=n_cpus, initializer=init, initargs=(counter, n_items))
     return pool, counter
 
-def run_multiprocessing(pool, internal_loop_func, n_items, dn, surf_vertices, surf_faces, data, norm, residual_tolerance, max_num_iter, cluster_index, cort_index, affine, k, reho, debug):
+def run_multiprocessing(pool, internal_loop_func, n_items, dn, surf_vertices, surf_faces, data, norm, residual_tolerance, max_num_iter, cluster_index, cort_index, affine, k, reho, full_brain, brain_mask, debug):
     """
     Initializes the specific function for each analysis and takes care of multiprocessing.
 
@@ -169,8 +187,10 @@ def run_multiprocessing(pool, internal_loop_func, n_items, dn, surf_vertices, su
         Vertices of the mesh.
     surf_faces : numpy array (M, 3)
         Faces of the mesh. Used to find the neighborhood of a given vertex.
-    data : numpy array (M, N)
-        Data to use to calculate the VB index. M must match the number of vertices in the mesh.
+    data : Surface -> numpy array (M, N)
+               Data to use to calculate the VB index. M must match the number of vertices in the mesh.
+           Volumetric -> (nRows, nCols, nSlices, N) numpy array
+               Volumetric data used to calculate the VB index. N is the number of maps.
     norm : string
         Method of reordering. Possibilities are 'geig', 'unnorm', 'rw' and 'sym'.
     residual_tolerance : float
@@ -185,6 +205,12 @@ def run_multiprocessing(pool, internal_loop_func, n_items, dn, surf_vertices, su
         Matrix used to compute spatial translations and rotations.
     k : integer
         Factor determining increase in density of input mesh.
+    reho : Bool.
+        Indicates that ReHo approach will be computed
+    full_brain : Bool.
+        Indicates that Full Brain analysis will be computed.        
+    brain_mask : ???????
+        ???????
     debug : boolean
         Outputs ribbon file for debugging.
 
@@ -214,7 +240,6 @@ def run_multiprocessing(pool, internal_loop_func, n_items, dn, surf_vertices, su
         pool.close()
         pool.terminate()
     
-    full_brain=True
     threads = np.array([])
     for i0 in range(0, n_items, dn):
         iN = min(i0 + dn, n_items)
@@ -222,6 +247,8 @@ def run_multiprocessing(pool, internal_loop_func, n_items, dn, surf_vertices, su
             threads = np.append(threads, (pool.apply_async(vb_cluster_internal_loop, (full_brain, i0, iN, surf_faces, data, cluster_index, norm, residual_tolerance, max_num_iter), error_callback=pool_callback)))
         elif internal_loop_func == "vb_hybrid_internal_loop":
             threads = np.append(threads, (pool.apply_async(vb_hybrid_internal_loop, (reho, i0, iN, surf_vertices, surf_faces, affine, data, norm, residual_tolerance, max_num_iter, k, debug), error_callback=pool_callback)))         
+        elif internal_loop_func == "vb_vol_internal_loop":
+            threads = np.append(threads, (pool.apply_async(vb_vol_internal_loop, (i0, iN, data, norm, brain_mask, residual_tolerance, max_num_iter, reho, debug), error_callback=pool_callback)))
         else:
             threads = np.append(threads, (pool.apply_async(vb_index_internal_loop, (i0, iN, surf_faces, data, norm, residual_tolerance, max_num_iter), error_callback=pool_callback)))
             
@@ -238,7 +265,7 @@ def run_multiprocessing(pool, internal_loop_func, n_items, dn, surf_vertices, su
     return res
 
 
-def process_and_save_results(internal_loop_func, results, output_name, nib_surf, surf_vertices, cluster_index, cort_index, affine, debug, data, n_items):
+def process_and_save_results(internal_loop_func, results, output_name, nib_surf, surf_vertices, cluster_index, cort_index, affine, debug, data, n_items, header):
     """
     It contains the logic to process the results depending on the desired analysis
 
@@ -262,10 +289,15 @@ def process_and_save_results(internal_loop_func, results, output_name, nib_surf,
         Matrix used to compute spatial translations and rotations.
     debug : boolean
         Outputs ribbon file for debugging.
-    data : numpy array (M, N)
-        Data to use to calculate the VB index. M must match the number of vertices in the mesh.
+    data : Surface -> numpy array (M, N)
+               Data to use to calculate the VB index. M must match the number of vertices in the mesh.
+           Volumetric -> (nRows, nCols, nSlices, N) numpy array
+               Volumetric data used to calculate the VB index. N is the number of maps.
     n_items : integer
         How many clusters are. 
+    header : Nifty header.
+        This header contains crucial information about the structure and metadata 
+        associated with the image data stored in the file.
 
     Returns
     -------
@@ -296,6 +328,8 @@ def process_and_save_results(internal_loop_func, results, output_name, nib_surf,
         # Processing for vb_index_internal_loop
         # This should handle the results specifically for vb_index_internal_loop
         return process_vb_index_results(results, cort_index, output_name, nib_surf)
+    elif internal_loop_func == "vb_vol_internal_loop":
+        return process_vb_vol_results(results, data, affine, header, output_name, debug)
     else:
         # Processing for vb_hybrid_internal_loop
         # This should handle the results specifically for vb_hybrid_internal_loop
@@ -434,6 +468,8 @@ def process_vb_hybrid_results(results, cort_index, output_name, nib_surf, affine
         Name of the output file(s).
     nib_surf : nibabel object.
         Nibabel object containing metadata to be replicated.
+    affine : numpy array (M, M).
+        Matrix used to compute spatial translations and rotations.
     debug : boolean
         Outputs ribbon file for debugging.
     data : numpy array (M, N)
@@ -476,6 +512,52 @@ def process_vb_hybrid_results(results, cort_index, output_name, nib_surf, affine
             
     return results_v2, n_neigh
 
+def process_vb_vol_results(results, data, affine, header, output_name, debug=False):
+    """
+    This function processes the results gotten from the vb_vol_internal_loop.
+
+    Parameters
+    ----------
+    results : numpy object array of (M,)
+        Numpy array that contains the computed vb index for every volumetric data.
+    data : Volumetric -> (nRows, nCols, nSlices, N) numpy array
+        Volumetric data used to calculate the VB index. N is the number of maps.
+    affine : numpy array (M, M), optional
+        Matrix used to compute spatial translations and rotations. The default is None.
+    header : Nifty header.
+        This header contains crucial information about the structure and metadata. 
+    output_name : string
+        Name of the output file(s).
+    debug : boolean, optional
+        Outputs ribbon file for debugging. The default is False
+
+    Returns
+    -------
+    None.
+
+    """
+    results_v2 = np.zeros((data.shape[0],data.shape[1],data.shape[2]), dtype=np.float32)
+    n_neigh = np.zeros((data.shape[0],data.shape[1],data.shape[2]), dtype=np.float32)
+
+    if debug:
+        coords = np.empty((0,3))
+
+    for i, res in enumerate(results):
+        for r in results[i]:
+            results_v2[int(r[1]),int(r[2]),int(r[3])] = r[0]
+            n_neigh[int(r[1]),int(r[2]),int(r[3])] = r[4]
+    if debug:
+        coords = np.vstack([coords,results[2]])
+
+    if debug: coords = coords.astype(int)
+    
+    # Save file
+    if output_name is not None:
+        
+        save_nifti(results_v2, n_neigh, affine, header, output_name)
+
+
+
 def open_gifti_surf(filename):
     """
     Helper function to read the surface from a gifti file.
@@ -516,6 +598,35 @@ def open_gifti(filename):
     # We use the first data as this is agnostic to the intent. In the future we
     # might want to change it.
     return nib, nib.darrays[0].data
+
+def save_nifti(result, n_neigh, affine, header, output_name):
+    """
+    Saves the data from the volumetric analysis into 2 compressed files.
+
+    Parameters
+    ----------
+    result : numpy array of float32 (nRows, nCols, nSlices)
+        Contains the processed results from process_vb_vol_results.
+    n_neigh : numpy array of float32 (nRows, nCols, nSlices)
+        Contains the amount of neighbours that every voxel has.
+    affine : numpy array (M, M), optional
+        Matrix used to compute spatial translations and rotations.
+    header : Nifty header.
+        This header contains crucial information about the structure and metadata 
+        associated with the image data stored in the file.
+    output_name : string
+        Name of the output file(s).
+
+    Returns
+    -------
+    None.
+
+    """
+    
+    img_new = nibabel.Nifti1Image(result, affine, header)
+    nibabel.save(img_new, output_name + ".vbi-vol.nii.gz")
+    img_neigh = nibabel.Nifti1Image(n_neigh, affine, header)
+    nibabel.save(img_neigh, output_name + ".vbi-neigh.nii.gz")
 
 def save_gifti(og_img, data, filename):
     """
@@ -569,7 +680,7 @@ def init(a_counter, a_n):
     counter = a_counter
     n = a_n
 
-def vb_index_internal_loop(i0, iN, surf_faces, data, norm, residual_tolerance, max_num_iter, debug=False, print_progress=False):
+def vb_index_internal_loop(i0, iN, surf_faces, data, norm, residual_tolerance, max_num_iter, debug=False):
     """Computes the Vogt-Bailey index of vertices in a given range
 
        Parameters
@@ -584,7 +695,11 @@ def vb_index_internal_loop(i0, iN, surf_faces, data, norm, residual_tolerance, m
            Data to use to calculate the VB index. M must match the number of vertices in the mesh
        norm: string
            Method of reordering. Possibilities are 'geig', 'unnorm', 'rw' and 'sym'
-       print_progress: boolean
+       residual_tolerance : float
+           The target tolerance for the calculation of eigenpairs.
+       max_num_iter : integer
+           Number of iterations for eigenpair calculation.
+       debug: boolean
            Print the current progress of the system
 
        Returns
@@ -624,7 +739,7 @@ def vb_index_internal_loop(i0, iN, surf_faces, data, norm, residual_tolerance, m
         except Exception:
             loc_result[idx] = np.nan # Simplemente gestiona errores
 
-        if print_progress: # Esto es un input para que si esta en True te va printeando info, supongo que para debguear
+        if debug: # Esto es un input para que si esta en True te va printeando info, supongo que para debguear
 
             global counter
             global n
@@ -636,11 +751,13 @@ def vb_index_internal_loop(i0, iN, surf_faces, data, norm, residual_tolerance, m
     return loc_result
 
 
-def vb_cluster_internal_loop(full_brain, idx_cluster_0, idx_cluster_N, surf_faces, data, cluster_index, norm, residual_tolerance, max_num_iter, print_progress=False):
+def vb_cluster_internal_loop(full_brain, idx_cluster_0, idx_cluster_N, surf_faces, data, cluster_index, norm, residual_tolerance, max_num_iter, debug=False):
     """Computes the Vogt-Bailey index and Fiedler vector of vertices of given clusters
 
        Parameters
        ----------
+       full_brain : 
+           
        idx_cluster_0: integer
            Index of first cluster to be analysed
        idx_cluster_N: integer
@@ -653,7 +770,11 @@ def vb_cluster_internal_loop(full_brain, idx_cluster_0, idx_cluster_N, surf_face
            Array containing the cluster which each vertex belongs to
        norm: string
            Method of reordering. Possibilities are 'geig', 'unnorm', 'rw' and 'sym'
-       print_progress: boolean
+       residual_tolerance : float
+           The target tolerance for the calculation of eigenpairs.
+       max_num_iter : integer
+           Number of iterations for eigenpair calculation.
+       debug: boolean
            Print the current progress of the system
 
        Returns
@@ -696,7 +817,7 @@ def vb_cluster_internal_loop(full_brain, idx_cluster_0, idx_cluster_N, surf_face
             raise error
 
 
-        if print_progress:
+        if debug:
 
             global counter
             global n
@@ -795,7 +916,7 @@ def get_neighborhood(data, surf_vertices, surf_faces, i, affine, k=3, debug=Fals
         return data[neigh_coords[:, 0], neigh_coords[:, 1], neigh_coords[:, 2], :]
 
 
-def vb_hybrid_internal_loop(reho, i0, iN, surf_vertices, surf_faces, affine, data, norm, residual_tolerance, max_num_iter, k=3, debug=False, print_progress=False):
+def vb_hybrid_internal_loop(reho, i0, iN, surf_vertices, surf_faces, affine, data, norm, residual_tolerance, max_num_iter, k=3, debug=False):
     """Computes the Vogt-Bailey index of vertices in a given range
 
        Parameters
@@ -808,19 +929,23 @@ def vb_hybrid_internal_loop(reho, i0, iN, surf_vertices, surf_faces, affine, dat
            iN - 1 is the index of the last vertex to be analysed
        surf_vertices: (M, 3) numpy array
            Coordinates of vertices of the mesh in voxel space
-       brain_mask: (nRows, nCols, nSlices) numpy array
-           Whole brain mask. Used to mask volumetric data
+       surf_faces : (M, 3) numpy array
+           Faces of the mesh. Used to find the neighborhood of a given vertex.          
+       affine : numpy array (M, M), optional
+           Matrix used to compute spatial translations and rotations.
        data: (nRows, nCols, nSlices, N) numpy array
            Volumetric data used to calculate the VB index. N is the number of maps
        norm: string
            Method of reordering. Possibilities are 'geig', 'unnorm', 'rw' and 'sym'
+       residual_tolerance : float
+           The target tolerance for the calculation of eigenpairs.
+       max_num_iter : integer
+           Number of iterations for eigenpair calculation.           
        k: integer
            Factor determining increase in density of input mesh (default k=3)
        debug: boolean
            Outputs ribbon file for debugging
-       print_progress: boolean
-           Print the current progress of the system
-
+     
        Returns
        -------
        loc_result: (N) numpy array
@@ -851,9 +976,9 @@ def vb_hybrid_internal_loop(reho, i0, iN, surf_vertices, surf_faces, affine, dat
             loc_neigh[idx] = len(neighborhood)
 
             if reho:
-                loc_result =  david_bisbal_ave_maria(loc_result, diff, idx, i, reho, neighborhood, residual_tolerance, max_num_iter, norm)
+                loc_result =  david_bisbal_ave_maria(loc_result, idx, i, neighborhood)
             else:
-                loc_result =  quevedo_quedate(loc_result, diff, idx, i, reho, neighborhood, residual_tolerance, max_num_iter, norm)
+                loc_result =  quevedo_quedate(loc_result, idx, i, neighborhood, residual_tolerance, max_num_iter, norm)
 
         except TimeSeriesTooShortError as error:
             raise error
@@ -862,7 +987,7 @@ def vb_hybrid_internal_loop(reho, i0, iN, surf_vertices, surf_faces, affine, dat
             loc_result[idx] = np.nan
         
 
-        if print_progress:
+        if debug:
 
             global counter
             global n
@@ -876,8 +1001,142 @@ def vb_hybrid_internal_loop(reho, i0, iN, surf_vertices, surf_faces, affine, dat
     else:
         return loc_result, loc_neigh
 	
+def vb_vol_internal_loop(i0, iN, data, norm, brain_mask, residual_tolerance, max_num_iter, reho, debug=False):
+    """Computes the Vogt-Bailey index of voxels in a given range.
 
-def david_bisbal_ave_maria(loc_result, diff, idx, i, reho, neighborhood, residual_tolerance, max_num_iter, norm):
+       Parameters
+       ----------
+       i0: integer
+           Index of first voxel to be analysed.
+       iN: integer
+           iN - 1 is the index of the last voxel to be analysed.
+       data: numpy array (nRows, nCols, nSlices, N)
+           Volumetric data used to calculate the VB index. N is the number of maps.
+       norm: string
+           Method of reordering. Possibilities are 'geig', 'unnorm', 'rw' and 'sym'.
+       brain_mask: (nRows, nCols, nSlices) numpy array
+           Whole brain mask. Used to eliminate voxels outside the brain from the analysis.
+       residual_tolerance: float
+           Residual tolerance (stopping criterion) for LOBPCG. Only relevant for the full brain algorithm.
+       max_num_iter: integer
+           Maximum number of iterations for LOBPCG. Only relevant for the full brain algorithm.
+       reho : ???????
+           ???????
+       debug: boolean
+           Print the current progress of the system
+
+       Returns
+       -------
+       loc_result: numpy array
+                   Resulting VB index of the voxels in the given range. Will have size (iN-i0, 4).
+    """
+    
+    # Calculate how many vertices we will compute
+    diff = iN - i0
+    loc_result = np.zeros((diff,5))
+
+    for idx in range(diff):
+        #Calculate the real index
+        i = idx + i0
+        neighborhood, vox_coords = get_neighborhood_vol(data,i,brain_mask)
+
+        # Get neighborhood and its data
+        try:
+
+            if len(neighborhood) == 0:
+                loc_result[idx,0] = np.nan
+                loc_result[idx,1:4] = vox_coords
+                loc_result[idx,-1] = 0
+                continue
+                
+            affinity = create_affinity_matrix(neighborhood)
+            if reho:
+                compute_vol_reho(neighborhood, i, idx, loc_result, affinity, vox_coords)
+            else:
+                compute_vol(neighborhood, i, idx, loc_result, affinity, vox_coords, residual_tolerance, max_num_iter, norm)
+            
+        except TimeSeriesTooShortError as error:
+            raise error
+        except Exception:
+            traceback.print_exc()
+            loc_result[idx,0] = np.nan
+            loc_result[idx,1:4] = vox_coords
+            loc_result[idx,-1] = np.nan
+        
+
+        if debug:
+
+            global counter
+            global n
+            with counter.get_lock():
+                counter.value += 1
+            if counter.value % 1000 == 0:
+                print("{}/{}".format(counter.value, n))
+                
+
+#    if debug:
+#        return loc_result, loc_neigh, all_coords
+#    else:
+    return loc_result
+
+def get_neighborhood_vol(data,i,mask=None):
+    """
+    Get neighbors in volumetric space given the index of a voxel.
+    Each voxel is assigned a unique index i by previous functions 
+    but this function converts i to coordinates in 3D.
+
+    Parameters
+    ----------
+    data : numpy array (nRows, nCols, nSlices, N)
+        Volumetric data used to calculate the VB index. N is the number of maps.
+    i : integer
+        Index of the vertex.
+    mask : TYPE, optional
+        DESCRIPTION. The default is None.
+
+    Returns
+    -------
+    data : TYPE
+        DESCRIPTION.
+    vox_coords : TYPE
+        DESCRIPTION.
+
+    """
+   
+    p0 = data.shape[0]
+    q0 = data.shape[1]
+    r0 = data.shape[2]
+    vox_coords = np.ones(3)
+    
+    if i < r0:
+        vox_coords = np.array([0,0,i])
+    elif i < q0*r0:
+        vox_coords = np.array([0,i//r0,i%r0])
+    else:
+        vox_coords = np.array([i//(q0*r0),(i%(q0*r0))//r0,(i%(q0*r0))%r0])
+    if (vox_coords[0] or vox_coords[1] or vox_coords[2]) < 0:
+        print('WARNING! Negative voxel coordinates!')
+            
+    neigh_coords = np.array([relative_index for relative_index in product((-1, 0, 1), repeat=3)])+vox_coords
+    neigh_coords = neigh_coords.astype(int)
+    for j in range(np.shape(neigh_coords)[1]):
+        new_neigh = np.delete(neigh_coords, neigh_coords[:,j] < 0, axis = 0)
+        neigh_coords = new_neigh
+
+    if mask is not None:
+        neigh_coords = neigh_coords[(neigh_coords[:,0] < p0) & (neigh_coords[:,1] < q0) & (neigh_coords[:,2] < r0)]
+        masked_neigh = np.where(mask[neigh_coords[:,0],neigh_coords[:,1], neigh_coords[:,2]])[0]
+        data = data[neigh_coords[masked_neigh,0],neigh_coords[masked_neigh,1], neigh_coords[masked_neigh,2],:]
+        data = np.atleast_2d(data)
+    else:
+        neigh_coords = neigh_coords[(neigh_coords[:,0] < p0) & (neigh_coords[:,1] < q0) & (neigh_coords[:,2] < r0)]
+        data = data[neigh_coords[:,0],neigh_coords[:,1],neigh_coords[:,2],:]
+        data = np.atleast_2d(data)
+            
+        
+    return data, vox_coords
+
+def david_bisbal_ave_maria(loc_result, idx, i, neighborhood):
     """
     Computes the Kendall's coefficient concordance (KCC) for the ReHo approach.
 
@@ -929,7 +1188,7 @@ def david_bisbal_ave_maria(loc_result, diff, idx, i, reho, neighborhood, residua
         
     return loc_result
 
-def quevedo_quedate(loc_result, diff, idx, i, reho, neighborhood, residual_tolerance, max_num_iter, norm):
+def quevedo_quedate(loc_result, idx, i, neighborhood, residual_tolerance, max_num_iter, norm):
     """
     Computes the eigenvalue for every voxel.
 
@@ -937,14 +1196,10 @@ def quevedo_quedate(loc_result, diff, idx, i, reho, neighborhood, residual_toler
     ----------
     loc_result : numpy array
         It stores the KCC values.
-    diff : integer
-        The amount of vertices that will be compute.
     idx : integer
         Number of iteration in the main for loop from vb_hybrid_internal_loop function.
     i : integer
         Real index.
-    reho : boolean
-        Used to compute the ReHo approach.
     neighborhood : numpy array of float32 (M, N)
         ??????????.
     residual_tolerance : float
@@ -976,6 +1231,49 @@ def quevedo_quedate(loc_result, diff, idx, i, reho, neighborhood, residual_toler
         else:
             print("Warning: too few neighbors ({})".format(affinity.shape[0]), "for vertex:",i)
             loc_result[idx] = np.nan
+        
+    return loc_result
+
+def compute_vol(neighborhood, i, idx, loc_result, affinity, vox_coords, residual_tolerance, max_num_iter, norm):
+    assert affinity.shape[0] == len(neighborhood), 'affinity.shape[0] and len(neighborhood) do not match!'
+    
+    if affinity.shape[0] > 3:
+        #Calculate the second smallest eigenvalue
+        _, _, eigenvalue, _ = spectral_reorder(False, affinity, residual_tolerance, max_num_iter, norm)
+        loc_result[idx,0] = eigenvalue
+        loc_result[idx,1:4] = vox_coords
+        loc_result[idx,-1] = affinity.shape[0]
+    else:
+        loc_result[idx,0] = np.nan
+        loc_result[idx,1:4] = vox_coords
+        loc_result[idx,-1] = affinity.shape[0]
+        
+    return loc_result
+
+def compute_vol_reho(neighborhood, i, idx, loc_result, affinity, vox_coords):
+    
+    no_of_voxels = np.shape(neighborhood)[0]
+    no_of_time_pts = np.shape(neighborhood)[1]
+    ranked_neigh = np.ones((no_of_voxels,no_of_time_pts))
+
+    if no_of_voxels >= no_of_time_pts:
+        print('neighborhood matrix must be transposed!')
+    for s in range(no_of_voxels):
+        ranked_neigh[s,:] = rankdata(neighborhood[s,:])
+        ranked_sums = np.sum(ranked_neigh,axis=0)
+        Rbar = np.sum(ranked_sums)/no_of_time_pts
+        R = np.sum((ranked_sums - Rbar)**2)
+        KCC = 12.*R / ((no_of_voxels**2)*(no_of_time_pts**3 - no_of_time_pts))
+    
+    if no_of_voxels > 3:
+        loc_result[idx] = KCC
+        loc_result[idx,1:4] = vox_coords
+        loc_result[idx,-1] = affinity.shape[0]
+    else:
+        print("Warning: too few neighbors ({})".format(no_of_voxels), "for vertex:",i)
+        loc_result[idx] = np.nan
+        loc_result[idx,1:4] = vox_coords
+        loc_result[idx,-1] = affinity.shape[0]
         
     return loc_result
 
@@ -1282,6 +1580,13 @@ def create_parser():
     
     parser.add_argument('-rh', '--reho', action='store_true',
                         help="""Calculate the KCC index for ReHo approach.""")
+    
+    parser.add_argument('-vol', '--volume', action='store_true',
+                        help="""Do not map results to surface.""")
+                        
+    parser.add_argument('-vm', '--volmask', metavar='file', type=str,
+                        nargs=1, default=None, help="""Nifti file containing the whole brain mask
+                        in volumetric space. Only relevant if computing the volumetric VB.""")
 
     parser.add_argument('-m', '--mask', metavar='file', type=str,
                                nargs=1, help="""File containing the labels to
@@ -1309,7 +1614,7 @@ def create_parser():
 
     requiredNamed.add_argument('-s', '--surface', metavar='file', type=str,
                                nargs=1, help="""File containing the surface
-                                              mesh.""", required=True)
+                                              mesh.""", required=False)
 
     requiredNamed.add_argument('-d', '--data', metavar='file', type=str,
                                nargs=1, help="""File containing the data over
@@ -1337,35 +1642,43 @@ def main():
     args = parser.parse_args()
 
     n_cpus = args.jobs[0]
-    nib_surf, vertices, faces = open_gifti_surf(args.surface[0])
+    if not args.volume:
+        nib_surf, vertices, faces = open_gifti_surf(args.surface[0])
 
-    # Get the text contents from the file
-    surf_text = open(args.surface[0], 'r', encoding='latin-1')
+        # Get the text contents from the file
+        surf_text = open(args.surface[0], 'r', encoding='latin-1')
 
-    hemi = None
+        hemi = None
 
-    # Check whether the file is left or right cortex
-    for line in surf_text:
-        if 'CortexLeft' in line:
-            hemi = 'CortexLeft'
-            break
-        elif 'CortexRight' in line:
-            hemi = 'CortexRight'
-            break
+        # Check whether the file is left or right cortex
+        for line in surf_text:
+            if 'CortexLeft' in line:
+                hemi = 'CortexLeft'
+                break
+            elif 'CortexRight' in line:
+                hemi = 'CortexRight'
+                break
+            
 
-    # Add the cortex information to the meta data
-    if hemi:
-        nib_surf.meta['AnatomicalStructurePrimary'] = hemi
+        # Add the cortex information to the beginning of the meta data
+        if hemi:
+            nib_surf.meta['AnatomicalStructurePrimary'] = hemi
 
-    nib = nibabel.load(args.data[0])
-    if args.hybrid:
+    nib = nibabel.load(args.data[0],mmap=False)
+    if (args.hybrid or args.volume):
         data = np.array(nib.dataobj)
         affine = nib.affine
+        header = nib.header
     else:
         if len(nib.darrays) > 1:
             data = np.array([n.data for n in nib.darrays]).transpose()
         else:
             data = nib.darrays[0].data
+            
+    if (args.norm is not None and args.norm[0] == 'rw'):
+        print('Warning: this method makes use of the Random Walk Normalized Laplacian, and has not been tested rigorously yet.')
+    if (args.norm is not None and args.norm[0] == 'sym'):
+        print('Warning: this method makes use of the Symmetric Normalized Laplacian, and has not been tested rigorously yet.')
             
     if (args.norm is not None and args.norm[0] == 'rw'):
         print('Warning: this method makes use of the Random Walk Normalized Laplacian, and has not been tested rigorously yet.')
@@ -1387,12 +1700,41 @@ def main():
         else:
             L_norm = args.norm[0]
         try:
-            result = compute_vb_metrics("vb_cluster", surf_vertices=vertices, surf_faces=faces, n_cpus=n_cpus, data=data, norm=L_norm, residual_tolerance=args.tol[0], max_num_iter=args.maxiter[0], output_name=args.output[0] + "." + L_norm, nib_surf=nib_surf, cluster_index=Z, debug=args.debug)
+            result = compute_vb_metrics("vb_cluster", surf_vertices=vertices, surf_faces=faces, n_cpus=n_cpus, data=data, norm=L_norm, residual_tolerance=args.tol[0], max_num_iter=args.maxiter[0], output_name=args.output[0] + "." + L_norm, nib_surf=nib_surf, cluster_index=Z, full_brain=True, debug=args.debug)
             #full_brain=True
         except Exception as error:
             sys.stderr.write(str(error))
             sys.exit(2)
             quit()
+
+    elif args.volume:
+        if args.reho:
+            print("Running ReHo approach with no surface mapping")
+        else:
+            print("Running searchlight analysis with no surface mapping")
+        if args.mask:
+            _, labels = open_gifti(args.mask[0])
+            cort_index = np.array(labels, bool)
+        else:
+            cort_index = None
+        if args.norm is None:
+            L_norm = 'unnorm'
+        else:
+            L_norm = args.norm[0]
+        if args.volmask:
+            brain_mask = nibabel.load(args.volmask[0],mmap=False)
+            brain_mask = np.array(brain_mask.dataobj)
+        else:
+            brain_mask = None
+        try:
+            if args.reho:
+                result = compute_vb_metrics(internal_loop_func="vb_vol", n_cpus=n_cpus, data=data, affine=affine, header=header, norm=L_norm, cort_index=cort_index, brain_mask=brain_mask, residual_tolerance=args.tol[0], max_num_iter=args.maxiter[0], output_name=args.output[0] + "." + L_norm, reho=True)
+            else:
+                result = compute_vb_metrics(internal_loop_func="vb_vol", n_cpus=n_cpus, data=data, affine=affine, header=header, norm=L_norm, cort_index=cort_index, brain_mask=brain_mask, residual_tolerance=args.tol[0], max_num_iter=args.maxiter[0], output_name=args.output[0] + "." + L_norm)
+        except Exception as error:
+            sys.stderr.write(str(error))
+            sys.exit(2)
+            quit()    
 
     elif args.clusters is None:
         if args.hybrid:
