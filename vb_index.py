@@ -12,14 +12,10 @@ import nibabel
 import numpy as np
 import textwrap as _textwrap
 import sys
-import os
-import scipy
 import scipy.linalg as spl
 import warnings
 import traceback
 from scipy.sparse.linalg import lobpcg
-import threading
-import ipdb
 from scipy.stats import rankdata
 
 def compute_vb_metrics(internal_loop_func, n_cpus, data, norm, residual_tolerance, max_num_iter, header=None, brain_mask=None, surf_vertices=None, surf_faces=None, output_name=None, nib_surf=None, k=None, cluster_index=None, cort_index=None, affine=None, reho=False, full_brain=False, debug=False):
@@ -45,8 +41,9 @@ def compute_vb_metrics(internal_loop_func, n_cpus, data, norm, residual_toleranc
     header : Nifty header.
         This header contains crucial information about the structure and metadata 
         associated with the image data stored in the file.
-    brain_mask : ???????
-        ???????.
+    brain_mask : numpy array of float32 (nRows, nCols, nSlices)
+        Contains boolean values to indicate the area that belongs to the brain (value 1)
+        and the area that belongs to the background(value 0).
     surf_vertices : numpy array (M, 3)
         Vertices of the mesh.
     surf_faces : numpy array (M, 3)
@@ -209,8 +206,9 @@ def run_multiprocessing(pool, internal_loop_func, n_items, dn, surf_vertices, su
         Indicates that ReHo approach will be computed
     full_brain : Bool.
         Indicates that Full Brain analysis will be computed.        
-    brain_mask : ???????
-        ???????
+    brain_mask : numpy array of float32 (nRows, nCols, nSlices)
+        Contains boolean values to indicate the area that belongs to the brain (value 1)
+        and the area that belongs to the background(value 0).
     debug : boolean
         Outputs ribbon file for debugging.
 
@@ -655,8 +653,7 @@ def save_gifti(og_img, data, filename):
 counter = None
 n = None
 
-from multiprocessing import Pool, Value, Lock
-import multiprocessing
+from multiprocessing import Pool, Value
 from itertools import product
 
 def init(a_counter, a_n):
@@ -717,7 +714,6 @@ def vb_index_internal_loop(i0, iN, surf_faces, data, norm, residual_tolerance, m
         i = idx + i0
 
         # Get neighborhood and its data
-        # TODO: Make this elegant
         try:
             neighbor_idx = np.array(np.sum(surf_faces == i, 1), dtype=bool)
             I = np.unique(surf_faces[neighbor_idx, :])
@@ -1020,8 +1016,8 @@ def vb_vol_internal_loop(i0, iN, data, norm, brain_mask, residual_tolerance, max
            Residual tolerance (stopping criterion) for LOBPCG. Only relevant for the full brain algorithm.
        max_num_iter: integer
            Maximum number of iterations for LOBPCG. Only relevant for the full brain algorithm.
-       reho : ???????
-           ???????
+       reho : Bool.
+           Indicates that ReHo approach will be computed
        debug: boolean
            Print the current progress of the system
 
@@ -1153,7 +1149,7 @@ def david_bisbal_ave_maria(loc_result, idx, i, neighborhood):
     reho : boolean
         Used to compute the ReHo approach.
     neighborhood : numpy array of float32 (M, N)
-        ??????????.
+        Computed neighbourhood for every voxel.
     residual_tolerance : float
         The target tolerance for the calculation of eigenpairs.
     max_num_iter : integer
@@ -1201,7 +1197,7 @@ def quevedo_quedate(loc_result, idx, i, neighborhood, residual_tolerance, max_nu
     i : integer
         Real index.
     neighborhood : numpy array of float32 (M, N)
-        ??????????.
+        Computed neighbourhood for every voxel.
     residual_tolerance : float
         The target tolerance for the calculation of eigenpairs.
     max_num_iter : integer
@@ -1235,6 +1231,36 @@ def quevedo_quedate(loc_result, idx, i, neighborhood, residual_tolerance, max_nu
     return loc_result
 
 def compute_vol(neighborhood, i, idx, loc_result, affinity, vox_coords, residual_tolerance, max_num_iter, norm):
+    """
+    Computes the neighbourhood for every voxel in the volumetric analysis.
+
+    Parameters
+    ----------
+    neighborhood : numpy array of float32 (M, N)
+        Computed neighbourhood for every voxel.
+    i : integer
+        Real index.
+    idx : integer
+        Number of iteration in the main for loop from vb_hybrid_internal_loop function.
+    loc_result : numpy array of float32 (M, N)
+        Stores all the computed eigenvalues.
+    affinity : numpy array of float32 (M, M)
+        The affinity matrix computed for the neighbourhood.
+    vox_coords : numpy array of int64 (M,)
+        The coords of the center voxel.
+    residual_tolerance : float
+        The target tolerance for the calculation of eigenpairs.
+    max_num_iter : integer
+        Number of iterations for eigenpair calculation.
+    norm : string
+        Method of reordering. Possibilities are 'geig', 'unnorm', 'rw' and 'sym'.
+
+    Returns
+    -------
+    loc_result : numpy array of float32 (M, N)
+        Stores all the computed eigenvalues.
+
+    """
     assert affinity.shape[0] == len(neighborhood), 'affinity.shape[0] and len(neighborhood) do not match!'
     
     if affinity.shape[0] > 3:
@@ -1251,6 +1277,30 @@ def compute_vol(neighborhood, i, idx, loc_result, affinity, vox_coords, residual
     return loc_result
 
 def compute_vol_reho(neighborhood, i, idx, loc_result, affinity, vox_coords):
+    """
+    Computes the neighbourhood for every voxel in the volumetric ReHo analysis.
+
+    Parameters
+    ----------
+    neighborhood : numpy array of float32 (M, N)
+        Computed neighbourhood for every voxel.
+    i : integer
+        Real index.
+    idx : integer
+        Number of iteration in the main for loop from vb_hybrid_internal_loop function.
+    loc_result : numpy array of float32 (M, N)
+        Stores all the computed KCC values.
+    affinity : numpy array of float32 (M, M)
+        The affinity matrix computed for the neighbourhood.
+    vox_coords : numpy array of int64 (M,)
+        The coords of the center voxel.
+
+    Returns
+    -------
+    loc_result : numpy array of float32 (M, N)
+        Stores all the computed KCC values.
+
+    """
     
     no_of_voxels = np.shape(neighborhood)[0]
     no_of_time_pts = np.shape(neighborhood)[1]
