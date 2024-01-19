@@ -17,6 +17,19 @@ import warnings
 import traceback
 from scipy.sparse.linalg import lobpcg
 from scipy.stats import rankdata
+import glob
+import os
+import signal
+import time
+import shutil
+
+# Ctrl + C
+def def_handler(sig, frame):
+    
+    print("\n[!] Keyboard Interrupt detected, exiting...")
+    sys.exit(1)
+    
+signal.signal(signal.SIGINT, def_handler)
 
 def compute_vb_metrics(internal_loop_func, n_cpus, data, norm, residual_tolerance, max_num_iter, header=None, brain_mask=None, surf_vertices=None, surf_faces=None, output_name=None, nib_surf=None, k=None, cluster_index=None, cort_index=None, affine=None, reho=False, full_brain=False, debug=False):
     """
@@ -164,6 +177,7 @@ def initialize_multiprocessing(n_cpus, n_items):
     """
     counter = Value('i', 0)
     pool = Pool(processes=n_cpus, initializer=init, initargs=(counter, n_items))
+    
     return pool, counter
 
 def run_multiprocessing(pool, internal_loop_func, n_items, dn, surf_vertices, surf_faces, data, norm, residual_tolerance, max_num_iter, cluster_index, cort_index, affine, k, reho, full_brain, brain_mask, debug):
@@ -218,26 +232,27 @@ def run_multiprocessing(pool, internal_loop_func, n_items, dn, surf_vertices, su
         It gets the results of all the threads.
 
     """
+    
     def pool_callback(result):
         """
         This function is used to handle pool errors
 
         Parameters
         ----------
-        result : pool object
-            Error that occurred during the process.
-
+            result : pool object
+        Error that occurred during the process.
+    
         Returns
         -------
         None.
-
+    
         """
         # Define error handling here
         print("Error occurred in pool execution:", result)
         # Terminate the pool in case of error
         pool.close()
         pool.terminate()
-    
+        
     threads = np.array([])
     for i0 in range(0, n_items, dn):
         iN = min(i0 + dn, n_items)
@@ -249,8 +264,8 @@ def run_multiprocessing(pool, internal_loop_func, n_items, dn, surf_vertices, su
             threads = np.append(threads, (pool.apply_async(vb_vol_internal_loop, (i0, iN, data, norm, brain_mask, residual_tolerance, max_num_iter, reho, debug), error_callback=pool_callback)))
         else:
             threads = np.append(threads, (pool.apply_async(vb_index_internal_loop, (i0, iN, surf_faces, data, norm, residual_tolerance, max_num_iter), error_callback=pool_callback)))
-            
-
+                
+    
     # Wait for all threads to complete
     pool.close()
     pool.join()
@@ -508,7 +523,7 @@ def process_vb_hybrid_results(results, cort_index, output_name, nib_surf, affine
             ribbon[coords[:,0], coords[:,1], coords[:,2]] = 1
             nibabel.save(nibabel.Nifti1Image(ribbon, affine),output_name+'.ribbon.nii.gz')
             
-    return results_v2, n_neigh
+    return results_v2
 
 def process_vb_vol_results(results, data, affine, header, output_name, debug=False):
     """
@@ -552,9 +567,9 @@ def process_vb_vol_results(results, data, affine, header, output_name, debug=Fal
     # Save file
     if output_name is not None:
         
-        save_nifti(results_v2, n_neigh, affine, header, output_name)
+        save_nifti(result=results_v2, n_neigh=n_neigh, affine=affine, header=header, output_name=output_name)
 
-
+    return results_v2
 
 def open_gifti_surf(filename):
     """
@@ -597,7 +612,7 @@ def open_gifti(filename):
     # might want to change it.
     return nib, nib.darrays[0].data
 
-def save_nifti(result, n_neigh, affine, header, output_name):
+def save_nifti(result, affine, header, output_name, n_neigh=None):
     """
     Saves the data from the volumetric analysis into 2 compressed files.
 
@@ -623,8 +638,9 @@ def save_nifti(result, n_neigh, affine, header, output_name):
     
     img_new = nibabel.Nifti1Image(result, affine, header)
     nibabel.save(img_new, output_name + ".vbi-vol.nii.gz")
-    img_neigh = nibabel.Nifti1Image(n_neigh, affine, header)
-    nibabel.save(img_neigh, output_name + ".vbi-neigh.nii.gz")
+    if n_neigh is not None and n_neigh.any():
+        img_neigh = nibabel.Nifti1Image(n_neigh, affine, header)
+        nibabel.save(img_neigh, output_name + ".vbi-neigh.nii.gz")
 
 def save_gifti(og_img, data, filename):
     """
@@ -972,9 +988,9 @@ def vb_hybrid_internal_loop(reho, i0, iN, surf_vertices, surf_faces, affine, dat
             loc_neigh[idx] = len(neighborhood)
 
             if reho:
-                loc_result =  david_bisbal_ave_maria(loc_result, idx, i, neighborhood)
+                loc_result =  compute_reho(loc_result, idx, i, neighborhood)
             else:
-                loc_result =  quevedo_quedate(loc_result, idx, i, neighborhood, residual_tolerance, max_num_iter, norm)
+                loc_result =  compute_vb_index(loc_result, idx, i, neighborhood, residual_tolerance, max_num_iter, norm)
 
         except TimeSeriesTooShortError as error:
             raise error
@@ -1035,6 +1051,12 @@ def vb_vol_internal_loop(i0, iN, data, norm, brain_mask, residual_tolerance, max
         #Calculate the real index
         i = idx + i0
         neighborhood, vox_coords = get_neighborhood_vol(data,i,brain_mask)
+        if np.isnan(neighborhood).all():
+            
+            loc_result[idx,0] = np.nan
+            loc_result[idx,1:4] = vox_coords
+            loc_result[idx,-1] = np.nan
+            continue
 
         # Get neighborhood and its data
         try:
@@ -1120,10 +1142,12 @@ def get_neighborhood_vol(data,i,mask=None):
         neigh_coords = new_neigh
 
     if mask is not None:
-        neigh_coords = neigh_coords[(neigh_coords[:,0] < p0) & (neigh_coords[:,1] < q0) & (neigh_coords[:,2] < r0)]
-        masked_neigh = np.where(mask[neigh_coords[:,0],neigh_coords[:,1], neigh_coords[:,2]])[0]
-        data = data[neigh_coords[masked_neigh,0],neigh_coords[masked_neigh,1], neigh_coords[masked_neigh,2],:]
-        data = np.atleast_2d(data)
+        if mask[vox_coords[0],vox_coords[1],vox_coords[2]] == 1:
+            neigh_coords = neigh_coords[(neigh_coords[:,0] < p0) & (neigh_coords[:,1] < q0) & (neigh_coords[:,2] < r0)]
+            data = data[neigh_coords[:,0],neigh_coords[:,1],neigh_coords[:,2],:]
+            data = np.atleast_2d(data)
+        else:
+            data = np.nan
     else:
         neigh_coords = neigh_coords[(neigh_coords[:,0] < p0) & (neigh_coords[:,1] < q0) & (neigh_coords[:,2] < r0)]
         data = data[neigh_coords[:,0],neigh_coords[:,1],neigh_coords[:,2],:]
@@ -1132,7 +1156,7 @@ def get_neighborhood_vol(data,i,mask=None):
         
     return data, vox_coords
 
-def david_bisbal_ave_maria(loc_result, idx, i, neighborhood):
+def compute_reho(loc_result, idx, i, neighborhood):
     """
     Computes the Kendall's coefficient concordance (KCC) for the ReHo approach.
 
@@ -1184,7 +1208,7 @@ def david_bisbal_ave_maria(loc_result, idx, i, neighborhood):
         
     return loc_result
 
-def quevedo_quedate(loc_result, idx, i, neighborhood, residual_tolerance, max_num_iter, norm):
+def compute_vb_index(loc_result, idx, i, neighborhood, residual_tolerance, max_num_iter, norm):
     """
     Computes the eigenvalue for every voxel.
 
@@ -1326,7 +1350,7 @@ def compute_vol_reho(neighborhood, i, idx, loc_result, affinity, vox_coords):
         loc_result[idx,-1] = affinity.shape[0]
         
     return loc_result
-
+    
 class TimeSeriesTooShortError(Exception):
     """Raised when the time series in the input data have less than three elements"""
     pass
@@ -1377,7 +1401,7 @@ def get_fiedler_eigenpair(method, full_brain, Q, D=None, is_symmetric=True, tol=
 
     Returns
     -------
-    second_smallest_eigval: floating-point number
+    vbi_value: floating-point number
                          The second smallest eigenvalue
     fiedler_vector: (M) numpy array
                     The Fiedler vector
@@ -1411,8 +1435,8 @@ def get_fiedler_eigenpair(method, full_brain, Q, D=None, is_symmetric=True, tol=
     else:
         normalisation_factor = dim/(dim-1.)
 
-    second_smallest_eigval = eigenvalues[1]/normalisation_factor
-    second_smallest_eigval = second_smallest_eigval.astype(np.float32)
+    vbi_value = eigenvalues[1]/normalisation_factor
+    vbi_value = vbi_value.astype(np.float32)
     
     fiedler_vector = eigenvectors[:, sort_eigen[1]]
     if D is None:
@@ -1420,7 +1444,7 @@ def get_fiedler_eigenpair(method, full_brain, Q, D=None, is_symmetric=True, tol=
     n = np.matmul(fiedler_vector, np.matmul(D, fiedler_vector))
     fiedler_vector = fiedler_vector/np.sqrt(n)
 
-    return second_smallest_eigval, fiedler_vector
+    return vbi_value, fiedler_vector
     
 
 def spectral_reorder(full_brain, B, residual_tolerance, max_num_iter, method='unnorm'):
@@ -1480,7 +1504,7 @@ def spectral_reorder(full_brain, B, residual_tolerance, max_num_iter, method='un
         # Method using generalised spectral decomposition of the
         # un-normalised Laplacian (see Shi and Malik, 2000)
 
-        eigenvalue, eigenvector = get_fiedler_eigenpair(method, full_brain, Q, D, tol=residual_tolerance, maxiter=max_num_iter)
+        vbi_value, eigenvector = get_fiedler_eigenpair(method, full_brain, Q, D, tol=residual_tolerance, maxiter=max_num_iter)
 
     elif method == 'sym': 
         # Method using the eigen decomposition of the Symmetric Normalized
@@ -1489,20 +1513,20 @@ def spectral_reorder(full_brain, B, residual_tolerance, max_num_iter, method='un
         L = spl.solve(T, Q)/np.diag(T) #Compute the normalized laplacian
         L = force_symmetric(L) # Force symmetry
 
-        eigenvalue, eigenvector = get_fiedler_eigenpair(method, full_brain, L, tol=residual_tolerance, maxiter=max_num_iter)
+        vbi_value, eigenvector = get_fiedler_eigenpair(method, full_brain, L, tol=residual_tolerance, maxiter=max_num_iter)
         eigenvector = spl.solve(T, eigenvector) # automatically normalized (i.e. eigenvector.transpose() @ (D @ eigenvector) = 1)
 
     elif method == 'rw':
         # Method using eigen decomposition of Random Walk Normalised Laplacian
         L = spl.solve(D, Q)
 
-        eigenvalue, eigenvector = get_fiedler_eigenpair(method, full_brain, L, is_symmetric=False, tol=residual_tolerance, maxiter=max_num_iter)
+        vbi_value, eigenvector = get_fiedler_eigenpair(method, full_brain, L, is_symmetric=False, tol=residual_tolerance, maxiter=max_num_iter)
         n = np.matmul(eigenvector.transpose(), np.matmul(D, eigenvector))
         eigenvector = eigenvector/np.sqrt(n)
 
     elif method == 'unnorm':
 
-        eigenvalue, eigenvector = get_fiedler_eigenpair(method, full_brain, Q, tol=residual_tolerance, maxiter=max_num_iter)
+        vbi_value, eigenvector = get_fiedler_eigenpair(method, full_brain, Q, tol=residual_tolerance, maxiter=max_num_iter)
 
     else:
         raise NameError("""Method '{}' not allowed. \n
@@ -1513,7 +1537,7 @@ def spectral_reorder(full_brain, B, residual_tolerance, max_num_iter, method='un
     sorted_B = B[sort_idx,:] # Reorder the original matrix
     sorted_B = sorted_B[:,sort_idx] # Reorder the original matrix
 
-    return sorted_B, sort_idx, eigenvalue, eigenvector
+    return sorted_B, sort_idx, vbi_value, eigenvector
 
 
 def create_affinity_matrix(neighborhood, eps=np.finfo(float).eps, verbose=False):
@@ -1578,7 +1602,6 @@ def create_affinity_matrix(neighborhood, eps=np.finfo(float).eps, verbose=False)
     return A
 
 
-
 class MultilineFormatter(argparse.HelpFormatter):
     def _fill_text(self, text, width, indent):
         text = self._whitespace_matcher.sub(' ', text).strip()
@@ -1588,6 +1611,117 @@ class MultilineFormatter(argparse.HelpFormatter):
             formatted_paragraph = _textwrap.fill(paragraph, width, initial_indent=indent, subsequent_indent=indent) + '\n\n'
             multiline_text = multiline_text + formatted_paragraph
         return multiline_text
+
+def create_temp_folder():
+    
+    if os.path.exists("/tmp"):
+        if os.path.exists("/tmp/temp_folder"):
+            shutil.rmtree("/tmp/temp_folder")            
+        os.mkdir("/tmp/temp_folder")
+        print("\n[+] A temporary folder has been created in /tmp")
+    else:
+        os.mkdir("temp_folder")        
+        print("\n[+] A temporary folder has been created in the actual folder, do not remove it until the analysis ends")
+        
+    if not os.path.exists("/tmp/temp_folder") and not os.path.exists("temp_folder"):
+        raise Exception("[!] Folder could't have been created")
+   
+def clean_screen():
+    
+    os.system('cls' if os.name == 'nt' else 'clear')
+   
+def compute_temporal_analysis(window_size, steps, size, path, analysis_type, affine, n_cpus, nib, norm, cort_index, residual_tolerance, max_num_iter, output_name, reho, header=None, brain_mask=None, data=None, surf_vertices=None, nib_surf=None, k=None, surf_faces=None, debug=None):
+    
+    create_temp_folder()
+    
+    print("Running Temporal Analysis")
+    
+    if analysis_type == "vb_hybrid":
+        temp = np.zeros([surf_vertices.shape[0], size], dtype=np.float32)
+    else:
+        temp = np.zeros([nib.shape[0],nib.shape[1],nib.shape[2],size], dtype=np.float32)
+      
+    data = np.array(nib.dataobj)
+    time.sleep(2) 
+    
+    j = 0
+    
+    for i in range(0,data.shape[3]-steps,steps):
+        
+        clean_screen()
+        print(f"[+] Iteration number: {i}")       
+        print(f"[+] Progress: {round(i/(data.shape[3]-steps)*100, 2)}%")
+        
+#        if i == 130:
+#            break
+        
+        vol = np.array(nib.dataobj[:,:,:,i:i+window_size])
+        if analysis_type == "vb_hybrid":
+            result = compute_vb_metrics(analysis_type, surf_vertices=surf_vertices, surf_faces=surf_faces, affine=affine, n_cpus=n_cpus, data=vol, norm=norm, cort_index=cort_index, residual_tolerance=residual_tolerance, max_num_iter=max_num_iter, output_name=output_name, nib_surf=nib_surf, k=k, reho=reho, debug=debug)
+            temp[:,j] = result
+        else:
+            result = compute_vb_metrics(analysis_type, n_cpus=n_cpus, data=vol, affine=affine, header=header, norm=norm, cort_index=cort_index, brain_mask=brain_mask, residual_tolerance=residual_tolerance, max_num_iter=max_num_iter, output_name=output_name, reho=reho)
+            temp[:,:,:,j] = result
+        
+        if j == size-1:
+            if not glob.glob(path+"*"):
+                if analysis_type == "vb_hybrid":                
+                    save_gifti(nib_surf, temp, path+f"conc{i}.shape.gii") 
+                else:
+                    save_nifti(result=temp, affine=nib.affine, header=nib.header, output_name=path+f"conc{i}")
+            else:
+                if analysis_type == "vb_hybrid": 
+                    save_gifti(nib_surf, temp, path+f"conc{i}.shape.gii")       
+                    concatenate_gifti_images(path, nib_surf, data, path+f"Conc{i}.shape.gii")
+                else:
+                    save_nifti(result=temp, affine=nib.affine, header=nib.header, output_name=path+f"conc{i}")
+                    concatenate_nifti_images(path, path+f"Conc{i}.vbi-vol.nii.gz")                    
+            j = 0
+            if analysis_type == "vb_hybrid":
+                temp = np.zeros([surf_vertices.shape[0], size], dtype=np.float32)
+            else:
+                temp = np.zeros([nib.shape[0],nib.shape[1],nib.shape[2],size], dtype=np.float32)
+        else:
+            j += 1
+            
+    if not np.all(temp==0):
+        if analysis_type == "vb_hybrid":    
+            save_gifti(nib_surf, temp, path+"conc_f.shape.gii")                      
+            concatenate_gifti_images(path, nib_surf, data, f"{output_name}.shape.gii")
+        else:
+            save_nifti(result=temp, affine=nib.affine, header=nib.header, output_name=path+f"conc{i}")
+            concatenate_nifti_images(path, f"{output_name}.vbi-vol.nii.gz")
+    else:        
+        image = glob.glob(path+"*")
+        if analysis_type == "vb_hybrid":  
+            os.rename(image[0], f"{output_name}.shape.gii")
+        else:
+            os.rename(image[0], f"{output_name}.vbi-vol.nii.gz")
+    
+        
+def concatenate_gifti_images(path, nib_surf, data, filename):
+    
+    images = glob.glob(path+"*")
+    image1 = nibabel.load(images[0])
+    image2 = nibabel.load(images[1])
+    
+    d_image1 = image1.darrays[0].data
+    d_image2 = image2.darrays[0].data
+    
+    concat_data = np.concatenate((d_image1, d_image2), axis=1)
+    save_gifti(nib_surf, concat_data, filename)   
+    
+    for file in images:
+        os.system(f"rm {file}")
+    
+def concatenate_nifti_images(path, filename):
+
+    images = glob.glob(path+"*")
+    concat_img = nibabel.funcs.concat_images(images,axis=3)
+    nibabel.save(concat_img, filename)
+    
+    for file in images:
+        os.system(f"rm {file}")
 
 def create_parser():
     authors = '''authors:
@@ -1633,6 +1767,21 @@ def create_parser():
     
     parser.add_argument('-vol', '--volume', action='store_true',
                         help="""Do not map results to surface.""")
+    
+    parser.add_argument('-ta', '--temporal-analysis', action='store_true',
+                        help="""FALTA POR PONER.""")
+    
+    parser.add_argument('-ws', '--window-size', metavar='integer', type=int, nargs=1, default=10,
+                        help="""Window size for Temporal Analysis.""")
+    
+    parser.add_argument('-st', '--step', metavar='integer', type=int, nargs=1, default=1,
+                        help="""Step for Temporal Analysis.""")
+    
+    parser.add_argument('-sz', '--size', metavar='integer', type=int, nargs=1, default=3,
+                        help="""Size for Temporal Analysis.""")
+    
+    parser.add_argument('-p', '--path', metavar='integer', type=str, nargs=1, default="/tmp/temp_folder/",
+                        help="""Path for temporal folder""")
                         
     parser.add_argument('-vm', '--volmask', metavar='file', type=str,
                         nargs=1, default=None, help="""Nifti file containing the whole brain mask
@@ -1687,7 +1836,7 @@ def main():
     None.
 
     """
-
+    
     parser = create_parser()
     args = parser.parse_args()
 
@@ -1709,7 +1858,6 @@ def main():
                 hemi = 'CortexRight'
                 break
             
-
         # Add the cortex information to the beginning of the meta data
         if hemi:
             nib_surf.meta['AnatomicalStructurePrimary'] = hemi
@@ -1756,7 +1904,7 @@ def main():
             sys.stderr.write(str(error))
             sys.exit(2)
             quit()
-
+            
     elif args.volume:
         if args.reho:
             print("Running ReHo approach with no surface mapping")
@@ -1776,11 +1924,29 @@ def main():
             brain_mask = np.array(brain_mask.dataobj)
         else:
             brain_mask = None
-        try:
-            if args.reho:
-                result = compute_vb_metrics(internal_loop_func="vb_vol", n_cpus=n_cpus, data=data, affine=affine, header=header, norm=L_norm, cort_index=cort_index, brain_mask=brain_mask, residual_tolerance=args.tol[0], max_num_iter=args.maxiter[0], output_name=args.output[0] + "." + L_norm, reho=True)
+        if args.temporal_analysis:
+            if not type(args.window_size) == int:
+                window_size = args.window_size[0]
             else:
-                result = compute_vb_metrics(internal_loop_func="vb_vol", n_cpus=n_cpus, data=data, affine=affine, header=header, norm=L_norm, cort_index=cort_index, brain_mask=brain_mask, residual_tolerance=args.tol[0], max_num_iter=args.maxiter[0], output_name=args.output[0] + "." + L_norm)
+                window_size = args.window_size
+            if not type(args.step) == int:
+                steps = args.step[0]
+            else:
+                steps = args.step
+            if not type(args.size) == int:
+                size = args.size[0]
+            else:
+                size = args.size
+            try:
+                compute_temporal_analysis(window_size=window_size, steps=steps, size=size, path=args.path, analysis_type="vb_vol", n_cpus=n_cpus, nib=nib, data=data, affine=affine, header=header, norm=L_norm, cort_index=cort_index, brain_mask=brain_mask, residual_tolerance=args.tol[0], max_num_iter=args.maxiter[0], output_name=args.output[0], reho=args.reho)
+                sys.exit(1)
+            except Exception as error:
+                sys.stderr.write(str(error))
+                sys.exit(2)
+                quit()
+        try:
+                result = compute_vb_metrics(internal_loop_func="vb_vol", n_cpus=n_cpus, data=data, affine=affine, header=header, norm=L_norm, cort_index=cort_index, brain_mask=brain_mask, residual_tolerance=args.tol[0], max_num_iter=args.maxiter[0], output_name=args.output[0] + "." + L_norm, reho=args.reho)
+            
         except Exception as error:
             sys.stderr.write(str(error))
             sys.exit(2)
@@ -1788,6 +1954,32 @@ def main():
 
     elif args.clusters is None:
         if args.hybrid:
+            if args.norm is None:
+                L_norm = 'unnorm'
+            else:
+                L_norm = args.norm[0]
+            _, labels = open_gifti(args.mask[0])
+            cort_index = np.array(labels, bool)
+            if args.temporal_analysis:
+                if not type(args.window_size) == int:
+                    window_size = args.window_size[0]
+                else:
+                    window_size = args.window_size
+                if not type(args.step) == int:
+                    steps = args.step[0]
+                else:
+                    steps = args.step
+                if not type(args.size) == int:
+                    size = args.size[0]
+                else:
+                    size = args.size
+                try:
+                    compute_temporal_analysis(window_size=window_size, steps=steps, size=size, path=args.path, analysis_type="vb_hybrid", surf_vertices=vertices, surf_faces=faces, affine=affine, n_cpus=n_cpus, nib=nib, norm=L_norm, cort_index=cort_index, residual_tolerance=args.tol[0], max_num_iter=args.maxiter[0], output_name=args.output[0], nib_surf=nib_surf, k=3, reho=args.reho, debug=args.debug)
+                    sys.exit(1)
+                except Exception as error:
+                    sys.stderr.write(str(error))
+                    sys.exit(2)
+                    quit()
             if args.reho:
                 print("Running ReHo approach")
             else:
@@ -1798,12 +1990,6 @@ def main():
                 quit()
           
             # Read labels
-            _, labels = open_gifti(args.mask[0])
-            cort_index = np.array(labels, bool)
-            if args.norm is None:
-                L_norm = 'unnorm'
-            else:
-                L_norm = args.norm[0]
             try:
                 result = compute_vb_metrics("vb_hybrid", surf_vertices=vertices, surf_faces=faces, affine=affine, n_cpus=n_cpus, data=data, norm=L_norm, cort_index=cort_index, residual_tolerance=args.tol[0], max_num_iter=args.maxiter[0], output_name=args.output[0], nib_surf=nib_surf, k=3, reho=args.reho, debug=args.debug)
             except Exception as error:
@@ -1828,7 +2014,8 @@ def main():
             except Exception as error:
                 sys.stderr.write(str(error))
                 sys.exit(2)
-                quit()
+                quit()           
+                     
     else:
         print("Running ROI analysis")
         if args.clusters is None:
@@ -1842,7 +2029,7 @@ def main():
         else:
             L_norm = args.norm[0]
         try:
-            result = compute_vb_metrics("vb_cluster_internal_loop", False, vertices, faces, n_cpus, data, L_norm, args.tol[0], args.maxiter[0], args.output[0] + "." + L_norm, nib_surf, k=3, cluster_index=Z, cort_index=cort_index, affine=affine, debug=args.debug)
+            result = compute_vb_metrics("vb_cluster", False, vertices, faces, n_cpus, data, L_norm, args.tol[0], args.maxiter[0], args.output[0] + "." + L_norm, nib_surf, k=3, cluster_index=Z, cort_index=cort_index, affine=affine, debug=args.debug)
         except Exception as error:
             sys.stderr.write(str(error))
             sys.exit(2)
