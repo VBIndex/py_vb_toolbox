@@ -20,7 +20,6 @@ from scipy.stats import rankdata
 import glob
 import os
 import signal
-import time
 import shutil
 
 # Ctrl + C
@@ -1630,19 +1629,11 @@ def clean_screen():
     
     os.system('cls' if os.name == 'nt' else 'clear')
    
-def compute_temporal_analysis(window_size, steps, size, path, analysis_type, affine, n_cpus, nib, norm, cort_index, residual_tolerance, max_num_iter, output_name, reho, header=None, brain_mask=None, data=None, surf_vertices=None, nib_surf=None, k=None, surf_faces=None, debug=None):
-    
-    create_temp_folder()
-    
-    print("Running Temporal Analysis")
-    
-    if analysis_type == "vb_hybrid":
-        temp = np.zeros([surf_vertices.shape[0], size], dtype=np.float32)
-    else:
-        temp = np.zeros([nib.shape[0],nib.shape[1],nib.shape[2],size], dtype=np.float32)
-      
+def compute_temporal_analysis_volumetric(window_size, steps, size, path, affine, header, brain_mask, n_cpus, nib, norm, cort_index, residual_tolerance, max_num_iter, output_name, reho, debug=None):
+                          
+    create_temp_folder()   
+    temp = np.zeros([nib.shape[0],nib.shape[1],nib.shape[2],size], dtype=np.float32)     
     data = np.array(nib.dataobj)
-    time.sleep(2) 
     
     j = 0
     
@@ -1652,56 +1643,82 @@ def compute_temporal_analysis(window_size, steps, size, path, analysis_type, aff
         print(f"[+] Iteration number: {i}")       
         print(f"[+] Progress: {round(i/(data.shape[3]-steps)*100, 2)}%")
         
-#        if i == 130:
-#            break
-        
         vol = np.array(nib.dataobj[:,:,:,i:i+window_size])
-        if analysis_type == "vb_hybrid":
-            result = compute_vb_metrics(analysis_type, surf_vertices=surf_vertices, surf_faces=surf_faces, affine=affine, n_cpus=n_cpus, data=vol, norm=norm, cort_index=cort_index, residual_tolerance=residual_tolerance, max_num_iter=max_num_iter, output_name=output_name, nib_surf=nib_surf, k=k, reho=reho, debug=debug)
-            temp[:,j] = result
-        else:
-            result = compute_vb_metrics(analysis_type, n_cpus=n_cpus, data=vol, affine=affine, header=header, norm=norm, cort_index=cort_index, brain_mask=brain_mask, residual_tolerance=residual_tolerance, max_num_iter=max_num_iter, output_name=output_name, reho=reho)
-            temp[:,:,:,j] = result
+        result = compute_vb_metrics("vb_vol", n_cpus=n_cpus, data=vol, affine=affine, header=header, norm=norm, cort_index=cort_index, brain_mask=brain_mask, residual_tolerance=residual_tolerance, max_num_iter=max_num_iter, output_name=output_name, reho=reho)
+        temp[:,:,:,j] = result
         
         if j == size-1:
             if not glob.glob(path+"*"):
-                if analysis_type == "vb_hybrid":                
-                    save_gifti(nib_surf, temp, path+f"conc{i}.shape.gii") 
-                else:
-                    save_nifti(result=temp, affine=nib.affine, header=nib.header, output_name=path+f"conc{i}")
+                save_nifti(result=temp, affine=nib.affine, header=nib.header, output_name=path+f"conc{i}")               
             else:
-                if analysis_type == "vb_hybrid": 
-                    save_gifti(nib_surf, temp, path+f"conc{i}.shape.gii")       
-                    concatenate_gifti_images(path, nib_surf, data, path+f"Conc{i}.shape.gii")
-                else:
-                    save_nifti(result=temp, affine=nib.affine, header=nib.header, output_name=path+f"conc{i}")
-                    concatenate_nifti_images(path, path+f"Conc{i}.vbi-vol.nii.gz")                    
+                save_nifti(result=temp, affine=nib.affine, header=nib.header, output_name=path+f"conc{i}")
+                concatenate_nifti_images(path, path+f"Conc{i}.vbi-vol.nii.gz")
+                    
             j = 0
-            if analysis_type == "vb_hybrid":
-                temp = np.zeros([surf_vertices.shape[0], size], dtype=np.float32)
-            else:
-                temp = np.zeros([nib.shape[0],nib.shape[1],nib.shape[2],size], dtype=np.float32)
+            temp = np.zeros([nib.shape[0],nib.shape[1],nib.shape[2],size], dtype=np.float32)
         else:
             j += 1
             
     if not np.all(temp==0):
-        if analysis_type == "vb_hybrid":    
-            save_gifti(nib_surf, temp, path+"conc_f.shape.gii")                      
-            concatenate_gifti_images(path, nib_surf, data, f"{output_name}.shape.gii")
-        else:
-            save_nifti(result=temp, affine=nib.affine, header=nib.header, output_name=path+f"conc{i}")
-            concatenate_nifti_images(path, f"{output_name}.vbi-vol.nii.gz")
+        save_nifti(result=temp, affine=nib.affine, header=nib.header, output_name=path+f"conc{i}")
+        if os.path.exists(f"{output_name}.vbi-vol.nii.gz"):
+            os.remove(f"{output_name}.vbi-vol.nii.gz")
+        concatenate_nifti_images(path, f"{output_name}.vbi-vol.nii.gz")
     else:        
         image = glob.glob(path+"*")
-        if analysis_type == "vb_hybrid":  
-            os.rename(image[0], f"{output_name}.shape.gii")
-        else:
-            os.rename(image[0], f"{output_name}.vbi-vol.nii.gz")
+        file_name = image[0].split("/")[-1]
+        shutil.move(image[0], file_name)
+        if os.path.exists(f"{output_name}.vbi-vol.nii.gz"):
+            os.remove(f"{output_name}.vbi-vol.nii.gz")
+        os.rename(image[0], f"{output_name}.vbi-vol.nii.gz")
     
+def compute_temporal_analysis_hybrid(window_size, steps, size, path, surf_vertices, surf_faces, nib_surf, affine, n_cpus, nib, norm, k, cort_index, residual_tolerance, max_num_iter, output_name, reho, debug=None):
+    
+    create_temp_folder()   
+    temp = np.zeros([surf_vertices.shape[0], size], dtype=np.float32)   
+    data = np.array(nib.dataobj)
+    
+    j = 0
+    
+    for i in range(0,data.shape[3]-steps,steps):
         
+        clean_screen()
+        print(f"[+] Iteration number: {i}")       
+        print(f"[+] Progress: {round(i/(data.shape[3]-steps)*100, 2)}%")        
+        vol = np.array(nib.dataobj[:,:,:,i:i+window_size])
+        result = compute_vb_metrics("vb_hybrid", surf_vertices=surf_vertices, surf_faces=surf_faces, affine=affine, n_cpus=n_cpus, data=vol, norm=norm, cort_index=cort_index, residual_tolerance=residual_tolerance, max_num_iter=max_num_iter, output_name=output_name, nib_surf=nib_surf, k=3, reho=reho, debug=debug)
+        temp[:,j] = result
+        
+        if j == size-1:
+            if not glob.glob(path+"*"):              
+                save_gifti(nib_surf, temp, path+f"conc{i}.shape.gii") 
+                
+            else:
+                save_gifti(nib_surf, temp, path+f"conc{i}.shape.gii")
+                concatenate_gifti_images(path, nib_surf, data, path+f"Conc{i}.shape.gii")       
+                
+            j = 0
+            temp = np.zeros([surf_vertices.shape[0], size], dtype=np.float32)
+        else:
+            j += 1
+            
+    if not np.all(temp==0):
+        save_gifti(nib_surf, temp, path+"conc_f.shape.gii")
+        if os.path.exists(f"{output_name}.vbi-hybrid.shape.gii"):
+            os.remove(f"{output_name}.vbi-hybrid.shape.gii")
+        concatenate_gifti_images(path, nib_surf, data, f"{output_name}.vbi-hybrid.shape.gii")
+
+    else:
+        image = glob.glob(path+"*")
+        file_name = image[0].split("/")[-1]
+        shutil.move(image[0], file_name)
+        if os.path.exists(f"{output_name}.vbi-hybrid.shape.gii"):
+            os.remove(f"{output_name}.vbi-hybrid.shape.gii")
+        os.rename(image[0].split("/")[-1], f"{output_name}.vbi-hybrid.shape.gii")
+
 def concatenate_gifti_images(path, nib_surf, data, filename):
     
-    images = glob.glob(path+"*")
+    images = sorted(glob.glob(path+"*"))
     image1 = nibabel.load(images[0])
     image2 = nibabel.load(images[1])
     
@@ -1716,7 +1733,7 @@ def concatenate_gifti_images(path, nib_surf, data, filename):
     
 def concatenate_nifti_images(path, filename):
 
-    images = glob.glob(path+"*")
+    images = sorted(glob.glob(path+"*"))
     concat_img = nibabel.funcs.concat_images(images,axis=3)
     nibabel.save(concat_img, filename)
     
@@ -1925,6 +1942,7 @@ def main():
         else:
             brain_mask = None
         if args.temporal_analysis:
+            print("Running Temporal Analysis with no surface mapping")
             if not type(args.window_size) == int:
                 window_size = args.window_size[0]
             else:
@@ -1938,7 +1956,7 @@ def main():
             else:
                 size = args.size
             try:
-                compute_temporal_analysis(window_size=window_size, steps=steps, size=size, path=args.path, analysis_type="vb_vol", n_cpus=n_cpus, nib=nib, data=data, affine=affine, header=header, norm=L_norm, cort_index=cort_index, brain_mask=brain_mask, residual_tolerance=args.tol[0], max_num_iter=args.maxiter[0], output_name=args.output[0], reho=args.reho)
+                compute_temporal_analysis_volumetric(window_size=window_size, steps=steps, size=size, path=args.path, n_cpus=n_cpus, nib=nib, affine=affine, header=header, norm=L_norm, cort_index=cort_index, brain_mask=brain_mask, residual_tolerance=args.tol[0], max_num_iter=args.maxiter[0], output_name=args.output[0], reho=args.reho)
                 sys.exit(1)
             except Exception as error:
                 sys.stderr.write(str(error))
@@ -1961,6 +1979,7 @@ def main():
             _, labels = open_gifti(args.mask[0])
             cort_index = np.array(labels, bool)
             if args.temporal_analysis:
+                print("Running Temporal Analysis with Hybrid Approach")
                 if not type(args.window_size) == int:
                     window_size = args.window_size[0]
                 else:
@@ -1974,7 +1993,7 @@ def main():
                 else:
                     size = args.size
                 try:
-                    compute_temporal_analysis(window_size=window_size, steps=steps, size=size, path=args.path, analysis_type="vb_hybrid", surf_vertices=vertices, surf_faces=faces, affine=affine, n_cpus=n_cpus, nib=nib, norm=L_norm, cort_index=cort_index, residual_tolerance=args.tol[0], max_num_iter=args.maxiter[0], output_name=args.output[0], nib_surf=nib_surf, k=3, reho=args.reho, debug=args.debug)
+                    compute_temporal_analysis_hybrid(window_size=window_size, steps=steps, size=size, path=args.path, surf_vertices=vertices, surf_faces=faces, affine=affine, n_cpus=n_cpus, nib=nib, norm=L_norm, cort_index=cort_index, residual_tolerance=args.tol[0], max_num_iter=args.maxiter[0], output_name=args.output[0], nib_surf=nib_surf, k=3, reho=args.reho, debug=args.debug)
                     sys.exit(1)
                 except Exception as error:
                     sys.stderr.write(str(error))
