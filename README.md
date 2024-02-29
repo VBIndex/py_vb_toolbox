@@ -15,12 +15,19 @@ proceed from there. If you take this approach, be sure you have the following
 packages installed
 
 ```
-multiprocess
-nibabel
+argparse
 numpy
 scipy
-pillow
-psutil
+nibabel
+multiprocess
+textwrap
+sys
+warnings
+traceback
+glob
+os
+signal
+shutil
 ```
 
 The preferred way to install is through pip. It is as easy as
