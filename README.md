@@ -148,17 +148,17 @@ There are five main uses for the `vb_tool`
 2. **Full brain feature gradient analysis** (Full Brain analysis)
 3. **Feature gradient analysis in a specified set of regions of interest** (ROI analysis)
 
-### Searchlight
+### 1. Searchlight
 
-The original analysis with surface mapping is called Searchlight analysis, however, it is currently not recommended to use. The command to use is the following one:
+The original analysis with surface mapping is called Searchlight analysis. However, it is currently not recommended to be used. The command to use is the following one:
 
 ```bash
 vb_tool --surface input_data/surface.surf.gii  --data input_data/data.nii --mask input_data/cortical_mask.shape.gii --output search_light
 ```
 
-Other analysis based on surface mapping are the following ones
+Other analysis methods based on the searchlight approach are the following ones
 
-#### Hybrid
+#### 1.1 Hybrid
 
 The per vertex VB-index analysis can be carried out with the following command
 
@@ -174,41 +174,41 @@ region on which the analysis will be carried out, and `False` in the regions to
 be left out. This is most commonly used to mask out midbrain structures which
 would otherwise influence the analysis of the cortical regions.
 
-#### Volumetric
+#### 1.2 Volumetric
 
-In order to run the Searchlight analysis with no surface mapping, the next command can be used:
+In order to run the Searchlight analysis with no surface mapping can be carried out with the following command:
 
 ```bash
 vb_tool --data input_data/data.nii.gz -vol --output volumetric_output
 ```
 
-This is the most simple way to run this analysis. It will output two files, -vol.nii.gz and -neigh.nii.gz. The first file is going to store the information gotten from the analysis, on the other hand, the second file is going to store the neighborhoud used for every voxel, so the output should be a cube, as the neighborhoud for every voxel is considered the 26 surrounding voxels.
+This is the simplest way to run this analysis. It will output two files, -vol.nii.gz and -neigh.nii.gz. The first file is going to store the information from the analysis. On the other hand, the second file is going to store the neighbourhood used for every voxel, so the output should be a cube.
 
-This may take a while since the tool will try to compute the VB index for every voxel, also for the voxels that are outside of the brain. In order to speed this up, a volumetric mask can be specified:
+This may take a while since the tool will try to compute the VB index for every voxel and for every voxel both inside and outside of the brain. In order to speed this up, a volumetric mask can be specified:
 
 ```bash
 vb_tool --data input_data/data.nii.gz --volmask input_data/volumetric_mask.nii.gz --volume --output volumetric_output
 ```
 
-Mask option will appear in further analysis explanations within curly brackets.
+The mask is an optional parameter that can be specified in the Volumetric and Temporal analysis. 
 
-#### Temporal
+#### 1.3 Temporal
 
-The purpose of this analysis is to see how the VB index changes over time, for this, a window size is specified, then, an average volume is calculated and the VB index is computed. This analysis can be run along Hybrid or Volumetric analysis: 
-
-```bash
-vb_tool --data input_data/data.nii.gz {--mask input_data/volumetric_mask.nii.gz} --window-size 10 --temporal-analysis [--hybrid/--volume] --output temporal_analysis
-```
-
-It is a requirement to choose one of the arguments within square brackets. For example, lets say that the first 5 volumes are taken, for the first iteration, volumes 1,2,3,4,5 are going to be taken into account to compute the VB index, for the next iteration, volumes 2,3,4,5,6 are going to be taken into account. So, the increment or step by default is 1, however, this can be specified using the step parameter:
+The purpose of this analysis is to see how the VB index changes over time. For this, a window size is specified, then, an average volume is calculated and the VB index is computed. This analysis can be run along Hybrid or Volumetric analysis: 
 
 ```bash
-vb_tool --data input_data/data.nii.gz {--mask input_data/volumetric_mask.nii.gz} --step 10 --temporal-analysis [--hybrid/--volume] --output temporal_analysis
+vb_tool --data input_data/data.nii.gz --mask input_data/volumetric_mask.nii.gz --window-size 10 --temporal-analysis [--hybrid/--volume] --output temporal_analysis
 ```
 
-It should be noted that it is preferable that the window size is a number divisor of the number of volumes that exist in the data. If it is not a divisor, that means that for the last iterations, the window size will be smaller than the one specified due to lack of volumes, at that point, the program will not continue calculating, it will directly output the results.
+It is a requirement to choose one of the arguments within square brackets. For example, lets say that the first 5 volumes are taken, for the first iteration, volumes 1,2,3,4,5 are going to be taken into account to compute the VB index, and for the next iteration, volumes 2,3,4,5,6 are going to be taken into account. So, the increment or step by default is 1, however, this can be specified using the step parameter:
 
-### Full Brain
+```bash
+vb_tool --data input_data/data.nii.gz --mask input_data/volumetric_mask.nii.gz --step 10 --temporal-analysis [--hybrid/--volume] --output temporal_analysis
+```
+
+It is recommended that the window size is a divisor of the number of volumes that exist in the data. If it is not a divisor, that means that for the last iterations, the window size will be smaller than the one specified due to lack of volumes. At that point, the program will not continue calculating and it will directly output the results.
+
+### 2. Full Brain
 
 To perform full brain feature gradient analysis and extract the associated VB index, the flag 
 `-fb` or `--full-brain` must be set instead of `--hybrid`. Otherwise, the flags are the same as for the hybrid analysis.
@@ -219,7 +219,7 @@ vb_tool --surface input_data/surface.surf.gii  --data input_data/data.func.gii -
 
 Be warned, however, that this analysis can take long and require a large amount of
 RAM. For data sets with 32k vertices, upwards of 30GB of RAM were used.
-### Regions of Interest (ROI) analysis
+### 3. Regions of Interest (ROI) analysis
 
 Sometimes, one is interested only in a small set of ROIs. In this case, the
 feature gradient map and the associated VB index value for each ROI will be
@@ -238,9 +238,9 @@ similar use to the cortical mask.
 
 ## ReHo
 
-Another interesting way to analyze the information can be using another index, that index is the ReHo index. The Regional Homogeneity index measures how similar the changes in the BOLD (Blood Oxygen Level Dependent) signal in a voxel (the three-dimensional equivalent of a pixel) are with respect to its immediate neighbors.
+The VB Toolbox also supports analysing data with the Regional Homogeneity (ReHo) index. The ReHo index measures the similarity between the Blood Oxygen Level Dependent (BOLD) signal of a voxel with respect to its immediate neighbors.
 
-This can be used along Hybrid, Volumetric or Temporal analysis, for this next example, the command for Volumetric analysis will be used:
+This can be used along Hybrid, Volumetric or Temporal analysis. For this next example, the command for Volumetric analysis will be used:
 
 ```bash
 vb_tool --data input_data/data.nii.gz --volmask input_data/volumetric_mask.nii.gz --volume --reho --output volumetric_output
