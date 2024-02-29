@@ -1,3 +1,11 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Feb 28 11:48:15 2024
+
+@author: bobducks
+"""
+
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
 # vim:fenc=utf-8
@@ -11,10 +19,8 @@ import multiprocessing
 import nibabel
 import numpy as np
 import textwrap as _textwrap
-import vb_toolbox.io as io
-import vb_toolbox.vb_index as vb
 import sys
-import os
+import vb_index
 
 class MultilineFormatter(argparse.HelpFormatter):
     def _fill_text(self, text, width, indent):
@@ -64,6 +70,31 @@ def create_parser():
 
     parser.add_argument('-hy', '--hybrid', action='store_true',
                         help="""Calculate searchlight VB index with hybrid approach.""")
+    
+    parser.add_argument('-rh', '--reho', action='store_true',
+                        help="""Calculate the KCC index for ReHo approach.""")
+    
+    parser.add_argument('-vol', '--volume', action='store_true',
+                        help="""Do not map results to surface.""")
+    
+    parser.add_argument('-ta', '--temporal-analysis', action='store_true',
+                        help="""Calculate the time varying VB index of a time window.""")
+    
+    parser.add_argument('-ws', '--window-size', metavar='integer', type=int, nargs=1, default=10,
+                        help="""Window size for Temporal Analysis.""")
+    
+    parser.add_argument('-st', '--step', metavar='integer', type=int, nargs=1, default=1,
+                        help="""Step for Temporal Analysis.""")
+    
+    parser.add_argument('-sz', '--size', metavar='integer', type=int, nargs=1, default=3,
+                        help="""Size for Temporal Analysis.""")
+    
+    parser.add_argument('-p', '--path', metavar='integer', type=str, nargs=1, default="/tmp/temp_folder/",
+                        help="""Path for temporal folder""")
+                        
+    parser.add_argument('-vm', '--volmask', metavar='file', type=str,
+                        nargs=1, default=None, help="""Nifti file containing the whole brain mask
+                        in volumetric space. Only relevant if computing the volumetric VB.""")
 
     parser.add_argument('-m', '--mask', metavar='file', type=str,
                                nargs=1, help="""File containing the labels to
@@ -91,7 +122,7 @@ def create_parser():
 
     requiredNamed.add_argument('-s', '--surface', metavar='file', type=str,
                                nargs=1, help="""File containing the surface
-                                              mesh.""", required=True)
+                                              mesh.""", required=False)
 
     requiredNamed.add_argument('-d', '--data', metavar='file', type=str,
                                nargs=1, help="""File containing the data over
@@ -104,42 +135,56 @@ def create_parser():
 
     return parser
 
-
 def main():
+    """
+    Main function where argument parser and main logic is handled.
 
+    Returns
+    -------
+    None.
+
+    """
+    
     parser = create_parser()
     args = parser.parse_args()
 
     n_cpus = args.jobs[0]
-    nib_surf, vertices, faces = io.open_gifti_surf(args.surface[0])
+    if not args.volume:
+        nib_surf, vertices, faces = vb_index.open_gifti_surf(args.surface[0])
 
-    # Get the text contents from the file
-    surf_text = open(args.surface[0], 'r', encoding='latin-1')
+        # Get the text contents from the file
+        surf_text = open(args.surface[0], 'r', encoding='latin-1')
 
-    hemi = None
+        hemi = None
 
-    # Check whether the file is left or right cortex
-    for line in surf_text:
-        if 'CortexLeft' in line:
-            hemi = 'CortexLeft'
-            break
-        elif 'CortexRight' in line:
-            hemi = 'CortexRight'
-            break
+        # Check whether the file is left or right cortex
+        for line in surf_text:
+            if 'CortexLeft' in line:
+                hemi = 'CortexLeft'
+                break
+            elif 'CortexRight' in line:
+                hemi = 'CortexRight'
+                break
+            
+        # Add the cortex information to the beginning of the meta data
+        if hemi:
+            nib_surf.meta['AnatomicalStructurePrimary'] = hemi
 
-    # Add the cortex information to the meta data
-    if hemi:
-        nib_surf.meta['AnatomicalStructurePrimary'] = hemi
-
-    nib = nibabel.load(args.data[0])
-    if args.hybrid:
+    nib = nibabel.load(args.data[0],mmap=False)
+    if (args.hybrid or args.volume):
         data = np.array(nib.dataobj)
         affine = nib.affine
+        header = nib.header
     else:
         if len(nib.darrays) > 1:
             data = np.array([n.data for n in nib.darrays]).transpose()
         else:
             data = nib.darrays[0].data
+            
+    if (args.norm is not None and args.norm[0] == 'rw'):
+        print('Warning: this method makes use of the Random Walk Normalized Laplacian, and has not been tested rigorously yet.')
+    if (args.norm is not None and args.norm[0] == 'sym'):
+        print('Warning: this method makes use of the Symmetric Normalized Laplacian, and has not been tested rigorously yet.')
             
     if (args.norm is not None and args.norm[0] == 'rw'):
         print('Warning: this method makes use of the Random Walk Normalized Laplacian, and has not been tested rigorously yet.')
@@ -153,7 +198,7 @@ def main():
             sys.exit(2)
             quit()
         # Read labels
-        _, labels = io.open_gifti(args.mask[0])
+        _, labels = vb_index.open_gifti(args.mask[0])
         cort_index = np.array(labels, bool)
         Z = np.array(cort_index, dtype=int)
         if args.norm is None:
@@ -161,29 +206,102 @@ def main():
         else:
             L_norm = args.norm[0]
         try:
-            result = vb.vb_cluster(True, vertices, faces, n_cpus, data, Z, L_norm, args.tol[0], args.maxiter[0], args.output[0] + "." + L_norm, nib_surf)
+            vb_index.compute_vb_metrics("vb_cluster", surf_vertices=vertices, surf_faces=faces, n_cpus=n_cpus, data=data, norm=L_norm, residual_tolerance=args.tol[0], max_num_iter=args.maxiter[0], output_name=args.output[0] + "." + L_norm, nib_surf=nib_surf, cluster_index=Z, full_brain=True, debug=args.debug)
+            #full_brain=True
         except Exception as error:
             sys.stderr.write(str(error))
             sys.exit(2)
             quit()
+            
+    elif args.volume:
+        if args.reho:
+            print("Running ReHo approach with no surface mapping")
+        else:
+            print("Running searchlight analysis with no surface mapping")
+        if args.mask:
+            _, labels = vb_index.open_gifti(args.mask[0])
+            cort_index = np.array(labels, bool)
+        else:
+            cort_index = None
+        if args.norm is None:
+            L_norm = 'unnorm'
+        else:
+            L_norm = args.norm[0]
+        if args.volmask:
+            brain_mask = nibabel.load(args.volmask[0],mmap=False)
+            brain_mask = np.array(brain_mask.dataobj)
+        else:
+            brain_mask = None
+        if args.temporal_analysis:
+            print("Running Temporal Analysis with no surface mapping")
+            if not type(args.window_size) == int:
+                window_size = args.window_size[0]
+            else:
+                window_size = args.window_size
+            if not type(args.step) == int:
+                steps = args.step[0]
+            else:
+                steps = args.step
+            if not type(args.size) == int:
+                size = args.size[0]
+            else:
+                size = args.size
+            try:
+                vb_index.compute_temporal_analysis_volumetric(window_size=window_size, steps=steps, size=size, path=args.path, n_cpus=n_cpus, nib=nib, affine=affine, header=header, norm=L_norm, cort_index=cort_index, brain_mask=brain_mask, residual_tolerance=args.tol[0], max_num_iter=args.maxiter[0], output_name=args.output[0], reho=args.reho)
+                sys.exit(1)
+            except Exception as error:
+                sys.stderr.write(str(error))
+                sys.exit(2)
+                quit()
+        try:
+                vb_index.compute_vb_metrics(internal_loop_func="vb_vol", n_cpus=n_cpus, data=data, affine=affine, header=header, norm=L_norm, cort_index=cort_index, brain_mask=brain_mask, residual_tolerance=args.tol[0], max_num_iter=args.maxiter[0], output_name=args.output[0] + "." + L_norm, reho=args.reho)
+            
+        except Exception as error:
+            sys.stderr.write(str(error))
+            sys.exit(2)
+            quit()    
 
     elif args.clusters is None:
         if args.hybrid:
-            print("Running searchlight analysis with hybrid approach")
+            if args.norm is None:
+                L_norm = 'unnorm'
+            else:
+                L_norm = args.norm[0]
+            _, labels = vb_index.open_gifti(args.mask[0])
+            cort_index = np.array(labels, bool)
+            if args.temporal_analysis:
+                print("Running Temporal Analysis with Hybrid Approach")
+                if not type(args.window_size) == int:
+                    window_size = args.window_size[0]
+                else:
+                    window_size = args.window_size
+                if not type(args.step) == int:
+                    steps = args.step[0]
+                else:
+                    steps = args.step
+                if not type(args.size) == int:
+                    size = args.size[0]
+                else:
+                    size = args.size
+                try:
+                    vb_index.compute_temporal_analysis_hybrid(window_size=window_size, steps=steps, size=size, path=args.path, surf_vertices=vertices, surf_faces=faces, affine=affine, n_cpus=n_cpus, nib=nib, norm=L_norm, cort_index=cort_index, residual_tolerance=args.tol[0], max_num_iter=args.maxiter[0], output_name=args.output[0], nib_surf=nib_surf, k=3, reho=args.reho, debug=args.debug)
+                    sys.exit(1)
+                except Exception as error:
+                    sys.stderr.write(str(error))
+                    sys.exit(2)
+                    quit()
+            if args.reho:
+                print("Running ReHo approach")
+            else:
+                print("Running searchlight analysis with hybrid approach")
             if args.mask is None:
                 sys.stderr.write("A mask file must be provided through the --mask flag. See --help")
                 sys.exit(2)
                 quit()
           
             # Read labels
-            _, labels = io.open_gifti(args.mask[0])
-            cort_index = np.array(labels, bool)
-            if args.norm is None:
-                L_norm = 'unnorm'
-            else:
-                L_norm = args.norm[0]
             try:
-                result = vb.vb_hybrid(vertices, faces, affine, n_cpus, data, L_norm, cort_index, args.tol[0], args.maxiter[0], args.output[0] + "." + L_norm, nib_surf, k=3, debug=args.debug)
+                vb_index.compute_vb_metrics("vb_hybrid", surf_vertices=vertices, surf_faces=faces, affine=affine, n_cpus=n_cpus, data=data, norm=L_norm, cort_index=cort_index, residual_tolerance=args.tol[0], max_num_iter=args.maxiter[0], output_name=args.output[0], nib_surf=nib_surf, k=3, reho=args.reho, debug=args.debug)
             except Exception as error:
                 sys.stderr.write(str(error))
                 sys.exit(2)
@@ -195,32 +313,33 @@ def main():
                 sys.exit(2)
                 quit()
             # Read labels
-            _, labels = io.open_gifti(args.mask[0])
+            _, labels = vb_index.open_gifti(args.mask[0])
             cort_index = np.array(labels, bool)
             if args.norm is None:
                 L_norm = 'unnorm'
             else:
                 L_norm = args.norm[0]
             try:
-                result = vb.vb_index(vertices, faces, n_cpus, data, L_norm, cort_index, args.tol[0], args.maxiter[0], args.output[0] + "." + L_norm, nib_surf)
+                vb_index.compute_vb_metrics("vb_index", surf_vertices=vertices, surf_faces=faces, n_cpus=n_cpus, data=data, norm=L_norm, cort_index=cort_index, residual_tolerance=args.tol[0], max_num_iter=args.maxiter[0], output_name=args.output[0] + "." + L_norm, nib_surf=nib_surf)
             except Exception as error:
                 sys.stderr.write(str(error))
                 sys.exit(2)
-                quit()
+                quit()           
+                     
     else:
         print("Running ROI analysis")
         if args.clusters is None:
             sys.stderr.write("A cluster file must be provided through the --clusters flag. See --help")
             sys.exit(2)
             quit()
-        nib, Z = io.open_gifti(args.clusters[0])
+        nib, Z = vb_index.open_gifti(args.clusters[0])
         Z = np.array(Z, dtype=np.int)
         if args.norm is None:
             L_norm = 'geig'
         else:
             L_norm = args.norm[0]
         try:
-            result = vb.vb_cluster(False, vertices, faces, n_cpus, data, Z, L_norm, args.tol[0], args.maxiter[0], args.output[0] + "." + L_norm, nib_surf)
+            vb_index.compute_vb_metrics("vb_cluster", False, vertices, faces, n_cpus, data, L_norm, args.tol[0], args.maxiter[0], args.output[0] + "." + L_norm, nib_surf, k=3, cluster_index=Z, cort_index=cort_index, affine=affine, debug=args.debug)
         except Exception as error:
             sys.stderr.write(str(error))
             sys.exit(2)
