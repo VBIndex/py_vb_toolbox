@@ -141,15 +141,17 @@ this program. If not, see <https://www.gnu.org/licenses>.
 
 There are five main uses for the `vb_tool`
 
-1. **Searchlight analysis** (Searchlight analysis)
-    1. **Hybrid approach** (Hybrid analysis)
-    2. **No surface mapping approach** (Volumetric analysis)
-    3. **Over time approach** (Temporal analysis)
-2. **Full brain feature gradient analysis** (Full Brain analysis)
-3. **Feature gradient analysis in a specified set of regions of interest** (ROI analysis)
+1. **Searchlight analysis** 
+    1. **Surface searchlight** (Searchlight analysis)  
+    2. **Hybrid approach** (Hybrid analysis)
+    3. **No surface mapping approach** (Volumetric analysis)
+    4. **Over time approach** (Temporal analysis)
+3. **Full brain feature gradient analysis** (Full Brain analysis)
+4. **Feature gradient analysis in a specified set of regions of interest** (ROI analysis)
 
 ### 1. Searchlight
 
+#### 1.1 Surface searchlight
 The original analysis with surface mapping is called Searchlight analysis. However, it is currently not recommended to be used. The command to use is the following one:
 
 ```bash
@@ -158,7 +160,7 @@ vb_tool --surface input_data/surface.surf.gii  --data input_data/data.nii --mask
 
 Other analysis methods based on the searchlight approach are the following ones
 
-#### 1.1 Hybrid
+#### 1.2 Hybrid
 
 The per vertex VB-index analysis can be carried out with the following command
 
@@ -174,7 +176,7 @@ region on which the analysis will be carried out, and `False` in the regions to
 be left out. This is most commonly used to mask out midbrain structures which
 would otherwise influence the analysis of the cortical regions.
 
-#### 1.2 Volumetric
+#### 1.3 Volumetric
 
 In order to run the Searchlight analysis with no surface mapping can be carried out with the following command:
 
@@ -192,7 +194,7 @@ vb_tool --data input_data/data.nii.gz --volmask input_data/volumetric_mask.nii.g
 
 The mask is an optional parameter that can be specified in the Volumetric and Temporal analysis. 
 
-#### 1.3 Temporal
+#### 1.4 Temporal
 
 The purpose of this analysis is to see how the VB index changes over time. For this, a window size is specified, then, an average volume is calculated and the VB index is computed. This analysis can be run along Hybrid or Volumetric analysis: 
 
