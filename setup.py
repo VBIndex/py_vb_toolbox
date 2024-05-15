@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="vb_toolbox",
-    version="2.1.1",
+    version="2.2.0",
     author="The BOB Lab",
     author_email="team@boblab.info",
     description="Library and command-line tool to calculate the Vogt-Bailey index of a dataset",
@@ -23,19 +23,23 @@ setuptools.setup(
     ],
     python_requires='>=3.6',
     install_requires=[
+        "argparse",
         "numpy",
         "scipy",
         "nibabel",
         "multiprocess",
-        "Pillow",
-        "psutil"
+        "textwrap",
+        "sys",
+        "warnings",
+        "traceback",
+        "glob",
+        "os",
+        "signal",
+        "shutil"        
     ],
     entry_points={
         'console_scripts':[
             'vb_tool = vb_toolbox.app:main',
-        ],
-        "gui_scripts":[
-            "vb_gui = vb_toolbox.app_gui:main",
         ]
     }
 )
