@@ -55,6 +55,11 @@ def create_parser():
     parser = argparse.ArgumentParser(description='Calculate the Vogt-Bailey index of a dataset. For more information, refer to https://github.com/VBIndex/py_vb_toolbox.',
                                      epilog=authors + " |n " + references + " |n " + copyright,
                                      formatter_class=MultilineFormatter)
+
+
+    parser.add_argument('-e', '--eigenvalue-index', metavar='INDEX', type=int, nargs=1, default=1,
+                        help="""Index of the eigenvalue to use. Default is the second smallest eigenvalue (index 1).""")
+
     parser.add_argument('-j', '--jobs', metavar='N', type=int, nargs=1,
                         default=[multiprocessing.cpu_count()], help="""Maximum
                         number of jobs to be used. If absent, one job per CPU
@@ -149,6 +154,10 @@ def main():
     args = parser.parse_args()
 
     n_cpus = args.jobs[0]
+    
+    eigenvalue_index = args.eigenvalue_index    
+    
+
     if not args.volume:
         nib_surf, vertices, faces = vb_index.open_gifti_surf(args.surface[0])
 
@@ -247,14 +256,14 @@ def main():
             else:
                 size = args.size
             try:
-                vb_index.compute_temporal_analysis_volumetric(window_size=window_size, steps=steps, size=size, path=args.path, n_cpus=n_cpus, nib=nib, affine=affine, header=header, norm=L_norm, cort_index=cort_index, brain_mask=brain_mask, residual_tolerance=args.tol[0], max_num_iter=args.maxiter[0], output_name=args.output[0], reho=args.reho)
+                vb_index.compute_temporal_analysis_volumetric(window_size=window_size, steps=steps, size=size, path=args.path, n_cpus=n_cpus, nib=nib, affine=affine, header=header, norm=L_norm, cort_index=cort_index, brain_mask=brain_mask, residual_tolerance=args.tol[0], max_num_iter=args.maxiter[0], output_name=args.output[0], reho=args.reho, eigenvalue_index=eigenvalue_index)
                 sys.exit(1)
             except Exception as error:
                 sys.stderr.write(str(error))
                 sys.exit(2)
                 quit()
         try:
-                vb_index.compute_vb_metrics(internal_loop_func="vb_vol", n_cpus=n_cpus, data=data, affine=affine, header=header, norm=L_norm, cort_index=cort_index, brain_mask=brain_mask, residual_tolerance=args.tol[0], max_num_iter=args.maxiter[0], output_name=args.output[0] + "." + L_norm, reho=args.reho)
+                vb_index.compute_vb_metrics(internal_loop_func="vb_vol", n_cpus=n_cpus, data=data, affine=affine, header=header, norm=L_norm, cort_index=cort_index, brain_mask=brain_mask, residual_tolerance=args.tol[0], max_num_iter=args.maxiter[0], eigenvalue_index = eigenvalue_index, output_name=args.output[0] + "." + L_norm, reho=args.reho)
             
         except Exception as error:
             sys.stderr.write(str(error))
@@ -284,7 +293,7 @@ def main():
                 else:
                     size = args.size
                 try:
-                    vb_index.compute_temporal_analysis_hybrid(window_size=window_size, steps=steps, size=size, path=args.path, surf_vertices=vertices, surf_faces=faces, affine=affine, n_cpus=n_cpus, nib=nib, norm=L_norm, cort_index=cort_index, residual_tolerance=args.tol[0], max_num_iter=args.maxiter[0], output_name=args.output[0], nib_surf=nib_surf, k=3, reho=args.reho, debug=args.debug)
+                    vb_index.compute_temporal_analysis_hybrid(window_size=window_size, steps=steps, size=size, path=args.path, surf_vertices=vertices, surf_faces=faces, affine=affine, n_cpus=n_cpus, nib=nib, norm=L_norm, cort_index=cort_index, residual_tolerance=args.tol[0], max_num_iter=args.maxiter[0], output_name=args.output[0], nib_surf=nib_surf, k=3, reho=args.reho, debug=args.debug, eigenvalue_index=eigenvalue_index)
                     sys.exit(1)
                 except Exception as error:
                     sys.stderr.write(str(error))

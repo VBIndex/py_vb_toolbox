@@ -27,7 +27,7 @@ def def_handler(sig, frame):
     
 signal.signal(signal.SIGINT, def_handler)
 
-def compute_vb_metrics(internal_loop_func, n_cpus, data, norm, residual_tolerance, max_num_iter, header=None, brain_mask=None, surf_vertices=None, surf_faces=None, output_name=None, nib_surf=None, k=None, cluster_index=None, cort_index=None, affine=None, reho=False, full_brain=False, debug=False):
+def compute_vb_metrics(internal_loop_func, n_cpus, data, norm, residual_tolerance, max_num_iter, eigenvalue_index,header=None, brain_mask=None, surf_vertices=None, surf_faces=None, output_name=None, nib_surf=None, k=None, cluster_index=None, cort_index=None, affine=None, reho=False, full_brain=False, debug=False):
     """
     It is responsible for executing the functions in the correct order to achieve the final result.
 
@@ -100,7 +100,7 @@ def compute_vb_metrics(internal_loop_func, n_cpus, data, norm, residual_toleranc
     pool, counter = initialize_multiprocessing(n_cpus, n_items)
 
     # Run multiprocessing
-    results = run_multiprocessing(pool, internal_loop_func, n_items, dn, surf_vertices, surf_faces, data, norm, residual_tolerance, max_num_iter, cluster_index, cort_index, affine, k, reho, full_brain, brain_mask, debug)
+    results = run_multiprocessing(pool, internal_loop_func, n_items, dn, surf_vertices, surf_faces, data, norm, residual_tolerance, max_num_iter,eigenvalue_index, cluster_index, cort_index, affine, k, reho, full_brain, brain_mask, debug)
 
     # Process and save results
     processed_results = process_and_save_results(internal_loop_func, results, output_name, nib_surf, surf_vertices, cluster_index, cort_index, affine, debug, data, n_items, header)
@@ -176,7 +176,7 @@ def initialize_multiprocessing(n_cpus, n_items):
     
     return pool, counter
 
-def run_multiprocessing(pool, internal_loop_func, n_items, dn, surf_vertices, surf_faces, data, norm, residual_tolerance, max_num_iter, cluster_index, cort_index, affine, k, reho, full_brain, brain_mask, debug):
+def run_multiprocessing(pool, internal_loop_func, n_items, dn, surf_vertices, surf_faces, data, norm, residual_tolerance, max_num_iter, eigenvalue_index, cluster_index, cort_index, affine, k, reho, full_brain, brain_mask, debug):
     """
     Initializes the specific function for each analysis and takes care of multiprocessing.
 
@@ -257,7 +257,7 @@ def run_multiprocessing(pool, internal_loop_func, n_items, dn, surf_vertices, su
         elif internal_loop_func == "vb_hybrid_internal_loop":
             threads = np.append(threads, (pool.apply_async(vb_hybrid_internal_loop, (reho, i0, iN, surf_vertices, surf_faces, affine, data, norm, residual_tolerance, max_num_iter, k, debug), error_callback=pool_callback)))         
         elif internal_loop_func == "vb_vol_internal_loop":
-            threads = np.append(threads, (pool.apply_async(vb_vol_internal_loop, (i0, iN, data, norm, brain_mask, residual_tolerance, max_num_iter, reho, debug), error_callback=pool_callback)))
+            threads = np.append(threads, (pool.apply_async(vb_vol_internal_loop, (i0, iN, data, norm, brain_mask, residual_tolerance, max_num_iter, eigenvalue_index, reho, debug), error_callback=pool_callback)))
         else:
             threads = np.append(threads, (pool.apply_async(vb_index_internal_loop, (i0, iN, surf_faces, data, norm, residual_tolerance, max_num_iter), error_callback=pool_callback)))
                 
@@ -1009,7 +1009,7 @@ def vb_hybrid_internal_loop(reho, i0, iN, surf_vertices, surf_faces, affine, dat
     else:
         return loc_result, loc_neigh
 	
-def vb_vol_internal_loop(i0, iN, data, norm, brain_mask, residual_tolerance, max_num_iter, reho, debug=False):
+def vb_vol_internal_loop(i0, iN, data, norm, brain_mask, residual_tolerance, max_num_iter,eigenvalue_index, reho, debug=False):
     """Computes the Vogt-Bailey index of voxels in a given range.
 
        Parameters
@@ -1067,7 +1067,7 @@ def vb_vol_internal_loop(i0, iN, data, norm, brain_mask, residual_tolerance, max
             if reho:
                 compute_vol_reho(neighborhood, i, idx, loc_result, affinity, vox_coords)
             else:
-                compute_vol(neighborhood, i, idx, loc_result, affinity, vox_coords, residual_tolerance, max_num_iter, norm)
+                compute_vol(neighborhood, i, idx, loc_result, affinity, vox_coords, residual_tolerance, max_num_iter, eigenvalue_index, norm)
             
         except TimeSeriesTooShortError as error:
             raise error
@@ -1250,7 +1250,7 @@ def compute_vb_index(loc_result, idx, i, neighborhood, residual_tolerance, max_n
         
     return loc_result
 
-def compute_vol(neighborhood, i, idx, loc_result, affinity, vox_coords, residual_tolerance, max_num_iter, norm):
+def compute_vol(neighborhood, i, idx, loc_result, affinity, vox_coords, residual_tolerance, max_num_iter, eigenvalue_index, norm):
     """
     Computes the neighbourhood for every voxel in the volumetric analysis.
 
@@ -1285,7 +1285,7 @@ def compute_vol(neighborhood, i, idx, loc_result, affinity, vox_coords, residual
     
     if affinity.shape[0] > 3:
         #Calculate the second smallest eigenvalue
-        _, _, eigenvalue, _ = spectral_reorder(False, affinity, residual_tolerance, max_num_iter, norm)
+        _, _, eigenvalue, _ = spectral_reorder(False, affinity, residual_tolerance, max_num_iter,eigenvalue_index, norm)
         loc_result[idx,0] = eigenvalue
         loc_result[idx,1:4] = vox_coords
         loc_result[idx,-1] = affinity.shape[0]
@@ -1376,7 +1376,7 @@ def force_symmetric(M):
     return triu_M + diag_M + triu_M.transpose()
     
 
-def get_fiedler_eigenpair(method, full_brain, Q, D=None, is_symmetric=True, tol='def_tol', maxiter=50):
+def get_fiedler_eigenpair(eigenvalue_index, method, full_brain, Q, D=None, is_symmetric=True, tol='def_tol', maxiter=50):
 
     """Solve the general eigenproblem to find the Fiedler vector and the corresponding eigenvalue.
 
@@ -1431,7 +1431,7 @@ def get_fiedler_eigenpair(method, full_brain, Q, D=None, is_symmetric=True, tol=
     else:
         normalisation_factor = dim/(dim-1.)
 
-    vbi_value = eigenvalues[1]/normalisation_factor
+    vbi_value = eigenvalues[eigenvalue_index]/normalisation_factor
     vbi_value = vbi_value.astype(np.float32)
     
     fiedler_vector = eigenvectors[:, sort_eigen[1]]
@@ -1443,7 +1443,7 @@ def get_fiedler_eigenpair(method, full_brain, Q, D=None, is_symmetric=True, tol=
     return vbi_value, fiedler_vector
     
 
-def spectral_reorder(full_brain, B, residual_tolerance, max_num_iter, method='unnorm'):
+def spectral_reorder(full_brain, B, residual_tolerance, max_num_iter,eigenvalue_index, method='unnorm'):
     """Computes the spectral reorder of the matrix B
 
     Parameters
@@ -1522,7 +1522,7 @@ def spectral_reorder(full_brain, B, residual_tolerance, max_num_iter, method='un
 
     elif method == 'unnorm':
 
-        vbi_value, eigenvector = get_fiedler_eigenpair(method, full_brain, Q, tol=residual_tolerance, maxiter=max_num_iter)
+        vbi_value, eigenvector = get_fiedler_eigenpair(eigenvalue_index, method, full_brain, Q, tol=residual_tolerance, maxiter=max_num_iter)
 
     else:
         raise NameError("""Method '{}' not allowed. \n
