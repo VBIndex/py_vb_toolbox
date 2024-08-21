@@ -4,9 +4,12 @@
 #
 # Copyright © 2022 VB Index Team
 #
+# Created by The BOBLab
+#
 # Distributed under terms of the GNU license.
 
 import nibabel
+import math
 import numpy as np
 import sys
 import scipy.linalg as spl
@@ -27,7 +30,7 @@ def def_handler(sig, frame):
     
 signal.signal(signal.SIGINT, def_handler)
 
-def compute_vb_metrics(internal_loop_func, n_cpus, data, norm, residual_tolerance, max_num_iter, header=None, brain_mask=None, surf_vertices=None, surf_faces=None, output_name=None, nib_surf=None, k=None, cluster_index=None, cort_index=None, affine=None, reho=False, full_brain=False, debug=False):
+def compute_vb_metrics(internal_loop_func, n_cpus, data, norm, residual_tolerance, max_num_iter, header=None, brain_mask=None, surf_vertices=None, surf_faces=None, output_name=None, nib_surf=None, k=None, cluster_index=None, cort_index=None, affine=None, reho=False, full_brain=False, six_f=False, debug=False):
     """
     It is responsible for executing the functions in the correct order to achieve the final result.
 
@@ -100,7 +103,7 @@ def compute_vb_metrics(internal_loop_func, n_cpus, data, norm, residual_toleranc
     pool, counter = initialize_multiprocessing(n_cpus, n_items)
 
     # Run multiprocessing
-    results = run_multiprocessing(pool, internal_loop_func, n_items, dn, surf_vertices, surf_faces, data, norm, residual_tolerance, max_num_iter, cluster_index, cort_index, affine, k, reho, full_brain, brain_mask, debug)
+    results = run_multiprocessing(pool, internal_loop_func, n_items, dn, surf_vertices, surf_faces, data, norm, residual_tolerance, max_num_iter, cluster_index, cort_index, affine, k, reho, full_brain, brain_mask, six_f, debug)
 
     # Process and save results
     processed_results = process_and_save_results(internal_loop_func, results, output_name, nib_surf, surf_vertices, cluster_index, cort_index, affine, debug, data, n_items, header)
@@ -176,7 +179,7 @@ def initialize_multiprocessing(n_cpus, n_items):
     
     return pool, counter
 
-def run_multiprocessing(pool, internal_loop_func, n_items, dn, surf_vertices, surf_faces, data, norm, residual_tolerance, max_num_iter, cluster_index, cort_index, affine, k, reho, full_brain, brain_mask, debug):
+def run_multiprocessing(pool, internal_loop_func, n_items, dn, surf_vertices, surf_faces, data, norm, residual_tolerance, max_num_iter, cluster_index, cort_index, affine, k, reho, full_brain, brain_mask, six_f, debug):
     """
     Initializes the specific function for each analysis and takes care of multiprocessing.
 
@@ -257,7 +260,7 @@ def run_multiprocessing(pool, internal_loop_func, n_items, dn, surf_vertices, su
         elif internal_loop_func == "vb_hybrid_internal_loop":
             threads = np.append(threads, (pool.apply_async(vb_hybrid_internal_loop, (reho, i0, iN, surf_vertices, surf_faces, affine, data, norm, residual_tolerance, max_num_iter, k, debug), error_callback=pool_callback)))         
         elif internal_loop_func == "vb_vol_internal_loop":
-            threads = np.append(threads, (pool.apply_async(vb_vol_internal_loop, (i0, iN, data, norm, brain_mask, residual_tolerance, max_num_iter, reho, debug), error_callback=pool_callback)))
+            threads = np.append(threads, (pool.apply_async(vb_vol_internal_loop, (i0, iN, data, norm, brain_mask, residual_tolerance, max_num_iter, reho, six_f, debug), error_callback=pool_callback)))
         else:
             threads = np.append(threads, (pool.apply_async(vb_index_internal_loop, (i0, iN, surf_faces, data, norm, residual_tolerance, max_num_iter), error_callback=pool_callback)))
                 
@@ -327,21 +330,16 @@ def process_and_save_results(internal_loop_func, results, output_name, nib_surf,
                   
 
     """
-    
-    # Implement the processing of results and saving of files as needed.
-    if internal_loop_func == "vb_cluster_internal_loop":
+   if internal_loop_func == "vb_cluster_internal_loop":
         # Processing for vb_cluster_internal_loop
-        # Replicating the logic from the old code to handle eigenvalues and eigenvectors
         return process_vb_cluster_results(results, surf_vertices, cluster_index, output_name, nib_surf, n_items)
     elif internal_loop_func == "vb_index_internal_loop":
         # Processing for vb_index_internal_loop
-        # This should handle the results specifically for vb_index_internal_loop
         return process_vb_index_results(results, cort_index, output_name, nib_surf)
     elif internal_loop_func == "vb_vol_internal_loop":
         return process_vb_vol_results(results, data, affine, header, output_name, debug)
     else:
         # Processing for vb_hybrid_internal_loop
-        # This should handle the results specifically for vb_hybrid_internal_loop
         return process_vb_hybrid_results(results, cort_index, output_name, nib_surf, affine, debug, data)
         
 def cleanup(pool):
@@ -391,15 +389,11 @@ def process_vb_cluster_results(results, surf_vertices, cluster_index, output_nam
 
     """
     # Process results as done in the old code for vb_cluster_internal_loop
-    # Replace the following lines with your specific logic for processing
-    cluster_labels = np.unique(cluster_index)
+   cluster_labels = np.unique(cluster_index)
     midline_index = cluster_index == 0
     results_v2 = np.empty(((len(cluster_labels)-1),), dtype=object)
-    #results_v2 = [[], []]
     results_eigenvectors_l = np.empty(((len(cluster_labels)-1),), dtype=object)
     
-    #results_eigenvectors_l = [[], []]
-    # Save files if output_name is provided
     for r, rv in enumerate(results):
         if r == 0:
             continue
@@ -450,14 +444,11 @@ def process_vb_index_results(results, cort_index, output_name, nib_surf):
 
     """
     # Process results as done in the old code for vb_index_internal_loop
-    # Replace the following lines with your specific logic for processing
     results_v2 = np.array([], dtype=np.float32)
     for r in results:
         results_v2 = np.append(results_v2, r)
-    #results = np.array(results)
     results_v2[np.logical_not(cort_index)] = np.nan
-    # The problem is that r is float64, when appending, results_v2 becomes
-    #float64 aswell.
+
     # Save files if output_name is provided
     if output_name is not None:
         save_gifti(nib_surf, results_v2, output_name + ".vbi.shape.gii")
@@ -493,7 +484,6 @@ def process_vb_hybrid_results(results, cort_index, output_name, nib_surf, affine
 
     """
     # Process results as done in the old code for vb_hybrid_internal_loop
-    # Replace the following lines with your specific logic for processing
     results_v2 = np.array([], dtype=np.float32)
     n_neigh = np.array([], dtype=np.float32)
     if debug:
@@ -650,7 +640,6 @@ def save_gifti(og_img, data, filename):
     filename: string
               String containing the name of the file to be saved
     """
-    # For some reason, wc_view demands float32
     data_array = nibabel.gifti.gifti.GiftiDataArray(data)
 
     # Create a meta object containing the cortex information
@@ -718,8 +707,8 @@ def vb_index_internal_loop(i0, iN, surf_faces, data, norm, residual_tolerance, m
     """
 
     # Calculate how many vertices we will compute
-    diff = iN - i0 # Estos determinan el rango de vertices que seran analizados
-    loc_result = np.zeros(diff, dtype=np.float32) # Se hace una matriz de 0 teniendo en cuenta el rango de los vertices
+    diff = iN - i0 
+    loc_result = np.zeros(diff, dtype=np.float32) 
 
     for idx in range(diff):
         # Calculate the real index
@@ -729,25 +718,24 @@ def vb_index_internal_loop(i0, iN, surf_faces, data, norm, residual_tolerance, m
         try:
             neighbor_idx = np.array(np.sum(surf_faces == i, 1), dtype=bool)
             I = np.unique(surf_faces[neighbor_idx, :])
-            neighborhood = data[I] # Va iterando por cada vertice y mira si tiene vecinos
+            neighborhood = data[I] 
             if len(neighborhood) == 0:
                 print("Warning: no neighborhood for vertex:",i)
-                loc_result[idx] = np.nan # Si no tiene que pone que no tiene y le ponen un NaN
+                loc_result[idx] = np.nan 
                 continue
 
             # Calculate the second smallest eigenvalue
-            affinity = create_affinity_matrix(neighborhood) # Crea la matriz de afinidad para poder sacar luego el eigenvalue 
-            _, _, eigenvalue, _ = spectral_reorder(False, affinity, residual_tolerance, max_num_iter, norm) # Calcula el segundo valor mas pequeno del eigenvalue que te dice el grado
+            affinity = create_affinity_matrix(neighborhood) 
+            _, _, eigenvalue, _ = spectral_reorder(False, affinity, residual_tolerance, max_num_iter, norm) 
 
-            # return [0]
             # Store the result of this run
-            loc_result[idx] = eigenvalue # El resultado de va a terminar siendo el eigenvalue
+            loc_result[idx] = eigenvalue 
         except TimeSeriesTooShortError as error:
             raise error 
         except Exception:
-            loc_result[idx] = np.nan # Simplemente gestiona errores
+            loc_result[idx] = np.nan 
 
-        if debug: # Esto es un input para que si esta en True te va printeando info, supongo que para debguear
+        if debug: 
 
             global counter
             global n
@@ -814,13 +802,9 @@ def vb_cluster_internal_loop(full_brain, idx_cluster_0, idx_cluster_N, surf_face
             # Store the result of this run
             # Warning: It is not true that the eigenvectors will be all the same
             # size, as the clusters might be of different sizes
-            #val = eigenvalue
-            #vel = eigenvector
-            #loc_result.append((val, vel))
             loc_result[0] = eigenvalue
             loc_result[1] = eigenvector
-            #lr_1[idx] = val
-            #lr_2[idx] = vel
+            
         except TimeSeriesTooShortError as error:
             raise error
 
@@ -836,13 +820,6 @@ def vb_cluster_internal_loop(full_brain, idx_cluster_0, idx_cluster_N, surf_face
 
     return loc_result
 
-#def claude_choose_whatever_name_you_want(reho, neighborhood, full_brain residual_tolerance, max_num_iter, norm):
-    
-#    if reho:
-        
-#    else:
-#        affinity = create_affinity_matrix(neighborhood)
-#        _, _, eigenvalue, eigenvector = spectral_reorder(full_brain, affinity, residual_tolerance, max_num_iter, norm)
 
 def get_neighborhood(data, surf_vertices, surf_faces, i, affine, k=3, debug=False):
     """
@@ -923,7 +900,6 @@ def get_neighborhood(data, surf_vertices, surf_faces, i, affine, k=3, debug=Fals
         # Step 14: Otherwise, return neighborhood data only
         return data[neigh_coords[:, 0], neigh_coords[:, 1], neigh_coords[:, 2], :]
 
-
 def vb_hybrid_internal_loop(reho, i0, iN, surf_vertices, surf_faces, affine, data, norm, residual_tolerance, max_num_iter, k=3, debug=False):
     """Computes the Vogt-Bailey index of vertices in a given range
 
@@ -978,6 +954,7 @@ def vb_hybrid_internal_loop(reho, i0, iN, surf_vertices, surf_faces, affine, dat
                 all_coords = np.vstack([all_coords,neigh_coords])
             else:
                 neighborhood = get_neighborhood(data,surf_vertices,surf_faces,i,affine,k=k)
+            # Should we keep this ?
             to_keep = np.where(np.std(neighborhood,axis=1)>1e-10)
             neighborhood = np.squeeze(neighborhood[to_keep,:])
             neighborhood = np.atleast_2d(neighborhood)
@@ -1009,7 +986,7 @@ def vb_hybrid_internal_loop(reho, i0, iN, surf_vertices, surf_faces, affine, dat
     else:
         return loc_result, loc_neigh
 	
-def vb_vol_internal_loop(i0, iN, data, norm, brain_mask, residual_tolerance, max_num_iter, reho, debug=False):
+def vb_vol_internal_loop(i0, iN, data, norm, brain_mask, residual_tolerance, max_num_iter, reho, six_f, debug=False):
     """Computes the Vogt-Bailey index of voxels in a given range.
 
        Parameters
@@ -1046,13 +1023,16 @@ def vb_vol_internal_loop(i0, iN, data, norm, brain_mask, residual_tolerance, max
     for idx in range(diff):
         #Calculate the real index
         i = idx + i0
-        neighborhood, vox_coords = get_neighborhood_vol(data,i,brain_mask)
+        neighborhood, vox_coords = get_neighborhood_vol(data,i,six_f,brain_mask)
         if np.isnan(neighborhood).all():
             
             loc_result[idx,0] = np.nan
             loc_result[idx,1:4] = vox_coords
             loc_result[idx,-1] = np.nan
             continue
+        to_keep = np.where(np.std(neighborhood,axis=1)>1e-10)
+        neighborhood = np.squeeze(neighborhood[to_keep,:])
+        neighborhood = np.atleast_2d(neighborhood)
 
         # Get neighborhood and its data
         try:
@@ -1088,12 +1068,9 @@ def vb_vol_internal_loop(i0, iN, data, norm, brain_mask, residual_tolerance, max
                 print("{}/{}".format(counter.value, n))
                 
 
-#    if debug:
-#        return loc_result, loc_neigh, all_coords
-#    else:
     return loc_result
 
-def get_neighborhood_vol(data,i,mask=None):
+def get_neighborhood_vol(data,i,six_f,mask=None):
     """
     Get neighbors in volumetric space given the index of a voxel.
     Each voxel is assigned a unique index i by previous functions 
@@ -1132,6 +1109,9 @@ def get_neighborhood_vol(data,i,mask=None):
         print('WARNING! Negative voxel coordinates!')
             
     neigh_coords = np.array([relative_index for relative_index in product((-1, 0, 1), repeat=3)])+vox_coords
+    if six_f:
+        mask_for_neigh_coords = np.sum((neigh_coords - vox_coords) == 0, axis=1) == 2
+        neigh_coords = neigh_coords[mask_for_neigh_coords]
     neigh_coords = neigh_coords.astype(int)
     for j in range(np.shape(neigh_coords)[1]):
         new_neigh = np.delete(neigh_coords, neigh_coords[:,j] < 0, axis = 0)
@@ -1142,6 +1122,8 @@ def get_neighborhood_vol(data,i,mask=None):
             neigh_coords = neigh_coords[(neigh_coords[:,0] < p0) & (neigh_coords[:,1] < q0) & (neigh_coords[:,2] < r0)]
             data = data[neigh_coords[:,0],neigh_coords[:,1],neigh_coords[:,2],:]
             data = np.atleast_2d(data)
+            no_zero_rows = np.any(data != 0, axis=1)
+            data = data[no_zero_rows]
         else:
             data = np.nan
     else:
@@ -1290,6 +1272,7 @@ def compute_vol(neighborhood, i, idx, loc_result, affinity, vox_coords, residual
         loc_result[idx,1:4] = vox_coords
         loc_result[idx,-1] = affinity.shape[0]
     else:
+        #print("Warning: too few neighbors ({})".format(no_of_voxels), "for vertex:",i)
         loc_result[idx,0] = np.nan
         loc_result[idx,1:4] = vox_coords
         loc_result[idx,-1] = affinity.shape[0]
@@ -1340,7 +1323,7 @@ def compute_vol_reho(neighborhood, i, idx, loc_result, affinity, vox_coords):
         loc_result[idx,1:4] = vox_coords
         loc_result[idx,-1] = affinity.shape[0]
     else:
-        print("Warning: too few neighbors ({})".format(no_of_voxels), "for vertex:",i)
+        #print("Warning: too few neighbors ({})".format(no_of_voxels), "for vertex:",i)
         loc_result[idx] = np.nan
         loc_result[idx,1:4] = vox_coords
         loc_result[idx,-1] = affinity.shape[0]
@@ -1616,13 +1599,35 @@ def clean_screen():
     
     os.system('cls' if os.name == 'nt' else 'clear')
    
-def compute_temporal_analysis_volumetric(window_size, steps, size, path, affine, header, brain_mask, n_cpus, nib, norm, cort_index, residual_tolerance, max_num_iter, output_name, reho, debug=None):
+def scrubbed_vols(img, i, window_size, svl, per):
+    
+    nel = []
+    for r, x in enumerate(range(i, i+window_size)):
+        if x not in svl:
+            nel.append(r)
+            
+    is_valid = True
+    if img.shape[-1] - len(nel) > per:
+        is_valid = False           
+        return img, is_valid
+    else:
+        new_img = img[..., nel]
+        return new_img, is_valid
+   
+def compute_temporal_analysis_volumetric(window_size, steps, size, path, affine, header, brain_mask, n_cpus, nib, norm, cort_index, residual_tolerance, max_num_iter, output_name, reho, svl, per, debug=None):
                           
     create_temp_folder()   
     temp = np.zeros([nib.shape[0],nib.shape[1],nib.shape[2],size], dtype=np.float32)     
     data = np.array(nib.dataobj)
     
     j = 0
+    
+    with open(svl, 'r') as file:
+        lines = file.readlines()
+        
+    svl = [int(line.strip()) for line in lines]
+    
+    per = round(math.ceil(window_size * (per / 100)))
     
     for i in range(0,data.shape[3]-steps,steps):
         
@@ -1631,10 +1636,15 @@ def compute_temporal_analysis_volumetric(window_size, steps, size, path, affine,
         print(f"[+] Progress: {round(i/(data.shape[3]-steps)*100, 2)}%")
         
         vol = np.array(nib.dataobj[:,:,:,i:i+window_size])
+        
         if vol.shape[3] < window_size:
             continue
-        result = compute_vb_metrics("vb_vol", n_cpus=n_cpus, data=vol, affine=affine, header=header, norm=norm, cort_index=cort_index, brain_mask=brain_mask, residual_tolerance=residual_tolerance, max_num_iter=max_num_iter, output_name=output_name, reho=reho)
-        temp[:,:,:,j] = result
+        vol, flag = scrubbed_vols(vol, i, window_size, svl, per)
+        if flag == False:
+            temp[:,:,:,j] = np.nan
+        else:
+            result = compute_vb_metrics("vb_vol", n_cpus=n_cpus, data=vol, affine=affine, header=header, norm=norm, cort_index=cort_index, brain_mask=brain_mask, residual_tolerance=residual_tolerance, max_num_iter=max_num_iter, output_name=output_name, reho=reho)
+            temp[:,:,:,j] = result
         
         if j == size-1:
             if not glob.glob(path+"*"):
@@ -1659,9 +1669,9 @@ def compute_temporal_analysis_volumetric(window_size, steps, size, path, affine,
         shutil.move(image[0], file_name)
         if os.path.exists(f"{output_name}.vbi-vol.nii.gz"):
             os.remove(f"{output_name}.vbi-vol.nii.gz")
-        os.rename(image[0], f"{output_name}.vbi-vol.nii.gz")
+        shutil.move(file_name, f"{output_name}.vbi-vol.nii.gz")
     
-def compute_temporal_analysis_hybrid(window_size, steps, size, path, surf_vertices, surf_faces, nib_surf, affine, n_cpus, nib, norm, k, cort_index, residual_tolerance, max_num_iter, output_name, reho, debug=None):
+def compute_temporal_analysis_hybrid(window_size, steps, size, path, surf_vertices, surf_faces, nib_surf, affine, n_cpus, nib, norm, k, cort_index, residual_tolerance, max_num_iter, output_name, reho, svl, per, debug=None):
     
     create_temp_folder()   
     temp = np.zeros([surf_vertices.shape[0], size], dtype=np.float32)   
@@ -1669,16 +1679,29 @@ def compute_temporal_analysis_hybrid(window_size, steps, size, path, surf_vertic
     
     j = 0
     
+    with open(svl, 'r') as file:
+        lines = file.readlines()
+        
+    svl = [int(line.strip()) for line in lines]
+    
+    per = round(math.ceil(window_size * (per / 100)))
+    
     for i in range(0,data.shape[3]-steps,steps):
         
         clean_screen()
         print(f"[+] Iteration number: {i}")       
         print(f"[+] Progress: {round(i/(data.shape[3]-steps)*100, 2)}%")        
         vol = np.array(nib.dataobj[:,:,:,i:i+window_size])
+        
         if vol.shape[3] < window_size:
             continue
-        result = compute_vb_metrics("vb_hybrid", surf_vertices=surf_vertices, surf_faces=surf_faces, affine=affine, n_cpus=n_cpus, data=vol, norm=norm, cort_index=cort_index, residual_tolerance=residual_tolerance, max_num_iter=max_num_iter, output_name=output_name, nib_surf=nib_surf, k=3, reho=reho, debug=debug)
-        temp[:,j] = result
+        vol, flag = scrubbed_vols(vol, i, window_size, svl, per)
+        if flag == False:
+            temp[:,:,:,j] = np.nan
+        else:
+            result = compute_vb_metrics("vb_hybrid", surf_vertices=surf_vertices, surf_faces=surf_faces, affine=affine, n_cpus=n_cpus, data=vol, norm=norm, cort_index=cort_index, residual_tolerance=residual_tolerance, max_num_iter=max_num_iter, output_name=output_name, nib_surf=nib_surf, k=3, reho=reho, debug=debug)
+            temp[:,:,:,j] = result
+
         
         if j == size-1:
             if not glob.glob(path+"*"):              
@@ -1705,7 +1728,7 @@ def compute_temporal_analysis_hybrid(window_size, steps, size, path, surf_vertic
         shutil.move(image[0], file_name)
         if os.path.exists(f"{output_name}.vbi-hybrid.shape.gii"):
             os.remove(f"{output_name}.vbi-hybrid.shape.gii")
-        os.rename(image[0].split("/")[-1], f"{output_name}.vbi-hybrid.shape.gii")
+        shutil.move(file_name, f"{output_name}.vbi-hybrid.shape.gii")
 
 def concatenate_gifti_images(path, nib_surf, data, filename):
     

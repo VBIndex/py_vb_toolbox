@@ -201,13 +201,13 @@ The mask is an optional parameter that can be specified in the Volumetric and Te
 The purpose of this analysis is to see how the VB index changes over time. For this, a window size is specified, then, an average volume is calculated and the VB index is computed. This analysis can be run along Hybrid or Volumetric analysis: 
 
 ```bash
-vb_tool --data input_data/data.nii.gz --mask input_data/volumetric_mask.nii.gz --window-size 10 --temporal-analysis [--hybrid/--volume] --output temporal_analysis
+vb_tool --data input_data/data.nii.gz --volmask input_data/volumetric_mask.nii.gz --window-size 10 --temporal-analysis [--hybrid/--volume] --output temporal_analysis
 ```
 
 It is a requirement to choose one of the arguments within square brackets. For example, lets say that the first 5 volumes are taken, for the first iteration, volumes 1,2,3,4,5 are going to be taken into account to compute the VB index, and for the next iteration, volumes 2,3,4,5,6 are going to be taken into account. So, the increment or step by default is 1, however, this can be specified using the step parameter:
 
 ```bash
-vb_tool --data input_data/data.nii.gz --mask input_data/volumetric_mask.nii.gz --step 10 --temporal-analysis [--hybrid/--volume] --output temporal_analysis
+vb_tool --data input_data/data.nii.gz --volmask input_data/volumetric_mask.nii.gz --step 10 --temporal-analysis [--hybrid/--volume] --output temporal_analysis
 ```
 
 It is recommended that the window size is a divisor of the number of volumes that exist in the data. If it is not a divisor, that means that for the last iterations, the window size will be smaller than the one specified due to lack of volumes. At that point, the program will not continue calculating and it will directly output the results.

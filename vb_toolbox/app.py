@@ -12,6 +12,8 @@ Created on Wed Feb 28 11:48:15 2024
 #
 # Copyright © 2022 VB Index Team
 #
+# Created by The BOBLab
+#
 # Distributed under terms of the GNU license.
 
 import argparse
@@ -74,6 +76,9 @@ def create_parser():
     parser.add_argument('-rh', '--reho', action='store_true',
                         help="""Calculate the KCC index for ReHo approach.""")
     
+    parser.add_argument('-ln', '--little-neighbourhood', action='store_true',
+                        help="""Change the amount of voxels taken to create the neighbourhoods, from 27 to 7, only for Volumetric analysis.""")
+    
     parser.add_argument('-vol', '--volume', action='store_true',
                         help="""Do not map results to surface.""")
     
@@ -106,6 +111,13 @@ def create_parser():
                         help="""File specifying the surface clusters. The cluster
                         with index 0 is expected to denote the medial brain
                         structures and will be ignored.""")
+                        
+    parser.add_argument('-svl', '--scrubbed_volumes_list', metavar='file', type=str, nargs=1, default=None,
+                        help="""File specifying the indices of the scrubbed volumes. It is required to run the
+                        temporal analysis only.""")
+                        
+    parser.add_argument('-per', '--percentage', metavar='file', type=int, nargs=1, default=None,
+                        help="""Percentage of maximum scrubbed volumes allowed in order to drop a window or not. It depends on the windows size.""")
                         
     parser.add_argument('-t', '--tol', metavar='tolerance', type=float, nargs=1,
                         default=["def_tol"], help="""Residual tolerance (stopping criterion) for LOBPCG. 
@@ -246,15 +258,26 @@ def main():
                 size = args.size[0]
             else:
                 size = args.size
+
+            if not type(args.scrubbed_volumes_list) == int:
+                svl = args.scrubbed_volumes_list[0]
+            else:
+                svl = args.scrubbed_volumes_list
+            if not type(args.percentage) == int:
+                per = args.percentage[0]
+            else:
+                per = args.percentage
             try:
-                vb_index.compute_temporal_analysis_volumetric(window_size=window_size, steps=steps, size=size, path=args.path, n_cpus=n_cpus, nib=nib, affine=affine, header=header, norm=L_norm, cort_index=cort_index, brain_mask=brain_mask, residual_tolerance=args.tol[0], max_num_iter=args.maxiter[0], output_name=args.output[0], reho=args.reho)
+                vb_index.compute_temporal_analysis_volumetric(window_size=window_size, steps=steps, size=size, path=args.path, n_cpus=n_cpus, nib=nib, affine=affine, header=header, norm=L_norm, cort_index=cort_index, brain_mask=brain_mask, residual_tolerance=args.tol[0], max_num_iter=args.maxiter[0], output_name=args.output[0], reho=args.reho, svl=svl, per=per, debug=args.debug)
+
                 sys.exit(1)
             except Exception as error:
                 sys.stderr.write(str(error))
                 sys.exit(2)
                 quit()
         try:
-                vb_index.compute_vb_metrics(internal_loop_func="vb_vol", n_cpus=n_cpus, data=data, affine=affine, header=header, norm=L_norm, cort_index=cort_index, brain_mask=brain_mask, residual_tolerance=args.tol[0], max_num_iter=args.maxiter[0], output_name=args.output[0] + "." + L_norm, reho=args.reho)
+
+                vb_index.compute_vb_metrics(internal_loop_func="vb_vol", n_cpus=n_cpus, data=data, affine=affine, header=header, norm=L_norm, cort_index=cort_index, brain_mask=brain_mask, residual_tolerance=args.tol[0], max_num_iter=args.maxiter[0], output_name=args.output[0] + "." + L_norm, six_f=args.little_neighbourhood, reho=args.reho)
             
         except Exception as error:
             sys.stderr.write(str(error))
@@ -283,8 +306,17 @@ def main():
                     size = args.size[0]
                 else:
                     size = args.size
+
+                if not type(args.scrubbed_volumes_list) == int:
+                    svl = args.scrubbed_volumes_list[0]
+                else:
+                    svl = args.scrubbed_volumes_list
+                if not type(args.precentage) == int:
+                    per = args.precentage[0]
+                else:
+                    per = args.precentage
                 try:
-                    vb_index.compute_temporal_analysis_hybrid(window_size=window_size, steps=steps, size=size, path=args.path, surf_vertices=vertices, surf_faces=faces, affine=affine, n_cpus=n_cpus, nib=nib, norm=L_norm, cort_index=cort_index, residual_tolerance=args.tol[0], max_num_iter=args.maxiter[0], output_name=args.output[0], nib_surf=nib_surf, k=3, reho=args.reho, debug=args.debug)
+                    vb_index.compute_temporal_analysis_hybrid(window_size=window_size, steps=steps, size=size, path=args.path, surf_vertices=vertices, surf_faces=faces, affine=affine, n_cpus=n_cpus, nib=nib, norm=L_norm, cort_index=cort_index, residual_tolerance=args.tol[0], max_num_iter=args.maxiter[0], output_name=args.output[0], nib_surf=nib_surf, k=3, reho=args.reho, svl=svl, per=per, debug=args.debug)
                     sys.exit(1)
                 except Exception as error:
                     sys.stderr.write(str(error))
