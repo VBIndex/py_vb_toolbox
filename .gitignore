@@ -1,0 +1,4 @@
+docs/_build
+docs/build
+.DS_Store
+vb_toolbox/__pycache__
