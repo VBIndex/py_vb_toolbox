@@ -330,7 +330,7 @@ def process_and_save_results(internal_loop_func, results, output_name, nib_surf,
                   
 
     """
-   if internal_loop_func == "vb_cluster_internal_loop":
+    if internal_loop_func == "vb_cluster_internal_loop":
         # Processing for vb_cluster_internal_loop
         return process_vb_cluster_results(results, surf_vertices, cluster_index, output_name, nib_surf, n_items)
     elif internal_loop_func == "vb_index_internal_loop":
@@ -389,7 +389,7 @@ def process_vb_cluster_results(results, surf_vertices, cluster_index, output_nam
 
     """
     # Process results as done in the old code for vb_cluster_internal_loop
-   cluster_labels = np.unique(cluster_index)
+    cluster_labels = np.unique(cluster_index)
     midline_index = cluster_index == 0
     results_v2 = np.empty(((len(cluster_labels)-1),), dtype=object)
     results_eigenvectors_l = np.empty(((len(cluster_labels)-1),), dtype=object)
