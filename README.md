@@ -22,14 +22,7 @@ numpy
 scipy
 nibabel
 multiprocess
-textwrap
-sys
-warnings
-traceback
-glob
-os
-signal
-shutil
+textwrap3
 ```
 
 The preferred way to install is through pip. It is as easy as
