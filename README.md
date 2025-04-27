@@ -122,21 +122,6 @@ analysis. Depending on the BLAS installation on your computer, this might not
 be the fastest approach, but will rarely be the slowest. If you are
 unsure, keep the default number of jobs.
 
-Due to the job structure of the `vb_tool`, the level of parallelism it can achieve
-on its own depends on the specific analysis being carried out.
-
-1. Full brain analysis: Low level of parallelism. Will only spawn one job
-2. Region of Interest (ROI) analysis: Medium level of parallelism. Will spawn as many
-   jobs as there are ROIs, or number of CPUS, whichever is the lowest.
-3. Any other analysis: High level of parallelism. Will spawn as many jobs as
-   there are CPUs
-
-Especially for the whole brain analysis, having a well-optimized BLAS
-installation will greatly accelerate the process, and allow for further
-parallelism.  Both MKL and OpenBLAS have been shown to support fast analysis. If
-you are using the Anaconda distribution, you will have a good BLAS
-pre-configured.
-
 ## References
 [1] C. J. Bajada et al., “A tutorial and tool for exploring feature similarity gradients with MRI data,” NeuroImage, vol. 221, pp. 117140–117140, Jul. 2020, doi: https://doi.org/10.1016/j.neuroimage.2020.117140.
 
