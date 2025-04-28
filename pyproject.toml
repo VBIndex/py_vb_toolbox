@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vb_tool"
+version = "2.3"
+authors = [
+  { name="Claude J. Bajada", email="claude.bajada@um.edu.mt" },
+  { name = "Lucas Campos"},
+  { name = "Christine Farrugia"},
+  { name = "Kenneth Scerri"},
+  { name = "Aitor Alberdi"},
+  { name = "Paola Galdi"},
+  { name = "Keith George Ciantar"},
+  { name = "Stephan Heunis"}
+]
+description = "Vogt-Bailey Index toolbox in Python"
+readme = "README.md"
+requires-python = ">=3.7"
+license-files = ["LICENSE.txt"]
+keywords = ["Vogt-Bailey Index", "VB Index", "Neuroimaging", "fMRI", "Brain"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Operating System :: POSIX :: Linux",
+  "Operating System :: MacOS"
+]
+
+dependencies = [
+  "dill==0.4.0",
+  "multiprocess==0.70.18",
+  "nibabel==5.3.2",
+  "numpy==2.2.5",
+  "packaging==25.0",
+  "scipy==1.15.2",
+  "textwrap3==0.9.2",
+  "typing_extensions==4.13.2"
+]
+
+[project.scripts]
+# CLI entry points:
+vb_tool = "vb_toolbox.vb_cli:main"
+
+[tool.setuptools]
+packages = ["vb_toolbox"]
