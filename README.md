@@ -9,7 +9,7 @@ Vogt-Bailey index [1-4] toolbox in Python
 
 Clone the repository:
 ```bash
-git clone [https://github.com/VBIndex/py_vb_toolbox.git](https://github.com/VBIndex/py_vb_toolbox.git)
+git clone https://github.com/VBIndex/py_vb_toolbox.git
 cd py_vb_toolbox
 ```
 
