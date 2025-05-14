@@ -9,6 +9,7 @@
 # Distributed under terms of the GNU license.
 
 from . import vol_pipe
+from . import vol_hdr
 
 import argparse
 import multiprocessing
@@ -16,6 +17,9 @@ import nibabel
 import numpy as np
 import textwrap as _textwrap
 import sys
+#mdf
+import os
+#mdf_end
 
 class MultilineFormatter(argparse.HelpFormatter):
     def _fill_text(self, text, width, indent):
@@ -75,6 +79,14 @@ def create_parser():
                         type=str,
                         help="""Base name for the output files.""", 
                         required=True)
+
+#mdf
+    volumetric.add_argument('-op', '--output_path',
+                        metavar='path',
+                        type=str,
+                        default="./",
+                        help="""Path to the output folder""")
+#mdf_end
     
     volumetric.add_argument('-vm', '--volmask', 
                         metavar='file', 
@@ -85,6 +97,12 @@ def create_parser():
     volumetric.add_argument('-ln', '--little-neighbourhood', 
                         action='store_true',
                         help="""Change the amount of voxels taken to create the neighbourhoods from 27 to 7.""")
+    
+#mdf
+    volumetric.add_argument('-ch','--correct_header',
+                        action='store_true',
+                        help="""Perform affine and data strides correction.""")
+#mdf_end
     
     volumetric.add_argument('-rh', '--reho', 
                         action='store_true',
@@ -129,6 +147,37 @@ def main():
 
     if args.method == 'volumetric':
         n_cpus = args.jobs
+#mdf
+        # nib = nibabel.load(args.data,mmap=False)
+        # data = np.array(nib.dataobj)
+        # affine = nib.affine
+        # header = nib.header
+        
+        # if args.norm:
+        #     L_norm = "geig"
+        # else:
+        #     L_norm = "unnorm"
+                   
+        # if args.reho:
+        #     print("Running ReHo approach with no surface mapping")
+        # else:
+        #     print("Running searchlight analysis with no surface mapping")
+#mdf_end
+            
+        if args.volmask:
+#mdf
+            new_volmask, new_data = vol_hdr.header_check(args.data, args.volmask, args.correct_header, args.output_path)
+            if new_volmask is not None:
+                args.volmask = new_volmask
+            if new_data is not None:
+                args.data = new_data
+#mdf_end
+            brain_mask = nibabel.load(args.volmask,mmap=False)
+            brain_mask = np.array(brain_mask.dataobj)
+        else:
+            brain_mask = None
+            
+#mdf            
         nib = nibabel.load(args.data,mmap=False)
         data = np.array(nib.dataobj)
         affine = nib.affine
@@ -138,20 +187,19 @@ def main():
             L_norm = "geig"
         else:
             L_norm = "unnorm"
-                        
+
         if args.reho:
             print("Running ReHo approach with no surface mapping")
         else:
             print("Running searchlight analysis with no surface mapping")
-            
-        if args.volmask:
-            brain_mask = nibabel.load(args.volmask,mmap=False)
-            brain_mask = np.array(brain_mask.dataobj)
-        else:
-            brain_mask = None
-            
+#mdf_end            
+
         try:
-            vol_pipe.main(n_cpus, data, affine, header, L_norm, brain_mask, output_name=args.output + "." + L_norm, six_f=args.little_neighbourhood, reho=args.reho)
+            
+#mdf
+            # vol_pipe.main(n_cpus, data, affine, header, L_norm, brain_mask, output_name=args.output + "." + L_norm, six_f=args.little_neighbourhood, reho=args.reho)
+            vol_pipe.main(n_cpus, data, affine, header, L_norm, brain_mask, output_name=os.path.join(args.output_path,args.output + "." + L_norm), six_f=args.little_neighbourhood, reho=args.reho)
+#mdf_end
 
         except Exception as error:
             sys.stderr.write(str(error))
